@@ -2,11 +2,11 @@ import React from "react";
 import { Link } from "react-router-dom";
 
 const CATEGORY_ICON = {
-  Tempurung: "🥥",
-  Sabut: "🧵",
-  Ampas: "🌾",
-  Daun: "🌿",
-  "Air Kelapa": "🥤",
+  Tempurung: "",
+  Sabut: "",
+  Ampas: "",
+  Daun: "",
+  "Air Kelapa": "",
 };
 
 export default function ProductCard({ product }) {
@@ -16,10 +16,10 @@ export default function ProductCard({ product }) {
         {product.image_url ? (
           <img src={product.image_url} alt={product.name} style={styles.img} />
         ) : (
-          <div style={styles.placeholder}>{CATEGORY_ICON[product.category] || "🥥"}</div>
+          <div style={styles.placeholder}>Kelapa</div>
         )}
         <span className="badge" style={styles.categoryBadge}>
-          {CATEGORY_ICON[product.category] || "🥥"} {product.category}
+          {product.category}
         </span>
       </div>
       <div style={{ padding: 14 }}>
@@ -29,8 +29,8 @@ export default function ProductCard({ product }) {
           <span style={styles.unit}> / {product.unit}</span>
         </div>
         <div className="row between" style={{ marginTop: 8, fontSize: "0.78rem", color: "var(--ink-soft)" }}>
-          <span>📍 {product.seller?.store_location || "-"}</span>
-          {product.avg_rating && <span>⭐ {product.avg_rating}</span>}
+          <span>Lokasi: {product.seller?.store_location || "-"}</span>
+          {product.avg_rating && <span>Rating: {product.avg_rating}</span>}
         </div>
       </div>
     </Link>

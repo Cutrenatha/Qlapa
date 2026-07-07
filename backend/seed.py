@@ -4,24 +4,90 @@ from models import db, User, Product, Review
 from ai_engine import generate_ai_description
 
 DEMO_PRODUCTS = [
-    dict(name="Tempurung Kelapa Kering", category="Tempurung", price=3000, stock=250, unit="kg",
-         condition="Kering", quality="Bersih, siap bakar",
-         image_url="https://images.unsplash.com/photo-1560493676-04071c5f467b?w=600"),
-    dict(name="Sabut Kelapa Cacah", category="Sabut", price=2500, stock=180, unit="kg",
-         condition="Kering", quality="Serat panjang, bebas kotoran",
-         image_url="https://images.unsplash.com/photo-1580910051074-3eb694886505?w=600"),
-    dict(name="Ampas Kelapa Basah", category="Ampas", price=1800, stock=90, unit="kg",
-         condition="Basah", quality="Segar, baru diperas",
-         image_url="https://images.unsplash.com/photo-1447279506476-3faec8071eee?w=600"),
-    dict(name="Daun Kelapa Kering", category="Daun", price=1500, stock=60, unit="ikat",
-         condition="Kering", quality="Cocok untuk anyaman",
-         image_url="https://images.unsplash.com/photo-1550258987-190a2d41a8ba?w=600"),
-    dict(name="Air Kelapa Muda", category="Air Kelapa", price=4000, stock=120, unit="liter",
-         condition="Segar", quality="Tanpa pengawet",
-         image_url="https://images.unsplash.com/photo-1571066811602-716837d681de?w=600"),
-    dict(name="Cangkang Kelapa Cacah", category="Tempurung", price=2800, stock=140, unit="kg",
-         condition="Kering", quality="Ukuran seragam 1-2cm",
-         image_url="https://images.unsplash.com/photo-1541599468348-e96984315921?w=600"),
+    dict(
+        name="Sabut Kelapa Segar",
+        category="Segar",
+        price=8000,
+        stock=40,
+        unit="karung",
+        condition="Segar",
+        quality="Serabut panjang segar, langsung dipisahkan dari kelapa baru",
+        image_url="/assets/sabut_segar.jpg",
+        weight="15 kg / karung",
+        length="25 – 35 cm",
+        moisture="65%",
+        description="Sabut kelapa segar belum diproses, cocok untuk media tanam, kerajinan tangan, atau bahan baku cocofiber. Kualitas terjaga, langsung dari petani."
+    ),
+    dict(
+        name="Ampas Kelapa Segar",
+        category="Segar",
+        price=3000,
+        stock=120,
+        unit="kg",
+        condition="Segar",
+        quality="Moist, putih bersih, baru diperas sekali",
+        image_url="/assets/ampas_segar.jpg",
+        weight="1 kg",
+        length="-",
+        moisture="70%",
+        description="Ampas kelapa segar hasil pemerasan santan, masih mengandung lemak dan serat tinggi. Ideal untuk pakan ternak, biogas, atau fermentasi pupuk organik."
+    ),
+    dict(
+        name="Tempurung Kelapa",
+        category="Kering",
+        price=5500,
+        stock=200,
+        unit="kg",
+        condition="Kering",
+        quality="Kering matahari, bersih dari sabut sisa",
+        image_url="/assets/tempurung.jpg",
+        weight="1 kg",
+        length="8 – 12 cm",
+        moisture="12%",
+        description="Tempurung kelapa kering berkualitas tinggi, siap untuk produksi arang aktif, kerajinan ukir, atau bahan bakar alternatif. Dipilih manual dan bebas lumut."
+    ),
+    dict(
+        name="Daun Kelapa Kering",
+        category="Kering",
+        price=5000,
+        stock=13,
+        unit="ikat",
+        condition="Kering",
+        quality="Kering alami, bebas jamur, cocok untuk anyaman",
+        image_url="/assets/daun_kering.jpg",
+        weight="5 kg / ikat",
+        length="30 – 60 cm",
+        moisture="15%",
+        description="Daun kelapa kering berkualitas baik, bersih, dan siap digunakan untuk berbagai kebutuhan seperti anyaman, kerajinan, kompos, dan bahan bakar alami."
+    ),
+    dict(
+        name="Sabut Kelapa Kering",
+        category="Kering",
+        price=6500,
+        stock=55,
+        unit="karung",
+        condition="Kering",
+        quality="Kering maksimal, berserat rapat",
+        image_url="/assets/sabut_kering.jpg",
+        weight="12 kg / karung",
+        length="20 – 30 cm",
+        moisture="10%",
+        description="Sabut kelapa kering sudah dikeringkan alami di bawah sinar matahari. Ringan, serabut padat, dan siap diolah menjadi keset, matras, atau media tanam hidroponik."
+    ),
+    dict(
+        name="Arang Batok Kelapa",
+        category="Kering",
+        price=12000,
+        stock=80,
+        unit="kg",
+        condition="Kering",
+        quality="Matang merata, minim abu, kalori tinggi",
+        image_url="/assets/arang_batok.jpg",
+        weight="1 kg",
+        length="2 – 5 cm",
+        moisture="5%",
+        description="Arang batok kelapa berkualitas ekspor dengan kadar karbon tinggi. Cocok untuk barbeque, shisha, pemurnian air, dan bahan baku karbon aktif industri."
+    ),
 ]
 
 with app.app_context():
@@ -29,7 +95,7 @@ with app.app_context():
     db.create_all()
 
     seller = User(name="Siti Nurhaliza", email="seller@qlapa.test", role="buyer", is_seller=True,
-                  phone="081200000001", store_name="LimbahKita Store",
+                  phone="081200000001", store_name="Toko Hijau Nusantara",
                   store_location="Aceh Besar, Aceh",
                   store_description="Menyediakan limbah kelapa berkualitas dari petani lokal Aceh.")
     seller.set_password("password123")
@@ -60,12 +126,12 @@ with app.app_context():
 
     sellers_cycle = [seller, seller, seller2, seller2, seller, seller2]
     for i, p in enumerate(DEMO_PRODUCTS):
-        desc = generate_ai_description(p["name"], p["category"], p["condition"], p["quality"])
         prod = Product(
             seller_id=sellers_cycle[i % len(sellers_cycle)].id,
             name=p["name"], category=p["category"], price=p["price"],
             stock=p["stock"], unit=p["unit"], image_url=p["image_url"],
-            ai_description=desc, condition=p["condition"], quality=p["quality"],
+            ai_description=p["description"], condition=p["condition"], quality=p["quality"],
+            weight=p["weight"], moisture=p["moisture"], length=p["length"]
         )
         db.session.add(prod)
     db.session.commit()

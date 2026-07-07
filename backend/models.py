@@ -64,17 +64,22 @@ class Product(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     seller_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     name = db.Column(db.String(150), nullable=False)
-    category = db.Column(db.String(50), nullable=False)  # Ampas, Tempurung, Sabut, Daun, Air Kelapa
+    category = db.Column(db.String(50), nullable=False)  # Segar, Kering
     price = db.Column(db.Float, nullable=False)
     stock = db.Column(db.Float, nullable=False, default=0)
     unit = db.Column(db.String(20), default="kg")
     image_url = db.Column(db.String(500))
     ai_description = db.Column(db.Text)
     manual_note = db.Column(db.Text)
-    condition = db.Column(db.String(50))  # e.g. Kering, Basah
+    condition = db.Column(db.String(50))  # Segar, Kering
     quality = db.Column(db.String(100))
     status = db.Column(db.String(20), default="active")  # active / nonactive
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Specification fields
+    weight = db.Column(db.String(50))
+    moisture = db.Column(db.String(50))
+    length = db.Column(db.String(50))
 
     reviews = db.relationship("Review", backref="product", lazy=True, cascade="all, delete-orphan")
 
@@ -99,6 +104,9 @@ class Product(db.Model):
             "created_at": self.created_at.isoformat(),
             "avg_rating": avg_rating,
             "review_count": len(self.reviews),
+            "weight": self.weight,
+            "moisture": self.moisture,
+            "length": self.length,
         }
         if include_seller and self.seller:
             data["seller"] = {
