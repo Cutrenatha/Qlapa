@@ -64,7 +64,7 @@ export default function Footer() {
         <div>
           <div style={s.colTitle}>Platform</div>
           <Link to="/produk" style={s.link}>Cari Produk</Link>
-          <Link to="/dashboard" style={s.link}>Jadi Penjual</Link>
+          <Link to="/toko/buka" style={s.link}>Jadi Penjual</Link>
           <Link to="/masuk" style={s.link}>Qlapa AI</Link>
         </div>
 

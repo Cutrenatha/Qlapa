@@ -1,8 +1,12 @@
-import React, { useState } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { Link, useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useCart } from "../context/CartContext.jsx";
-import { MessageSquare, ShoppingCart, User, Store, Menu, X, LogOut, ChevronRight } from "lucide-react";
+import api from "../api.js";
+import {
+  MessageSquare, ShoppingCart, User, Store, Menu, X, LogOut,
+  ChevronRight, Bell, ArrowLeft
+} from "lucide-react";
 import "./Navbar.css";
 
 export default function Navbar() {
@@ -13,11 +17,35 @@ export default function Navbar() {
   
   const [menuOpen, setMenuOpen] = useState(false); // Profile dropdown (desktop)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false); // Mobile menu panel
+  const [searchParams] = useSearchParams();
+  const [newOrdersCount, setNewOrdersCount] = useState(0);
 
   const path = location.pathname;
-  const isBerandaActive = path === "/";
-  const isProdukActive = path.startsWith("/produk");
-  const isPesananActive = path.startsWith("/pesanan");
+  const isSellerMode = path.startsWith("/dashboard");
+  
+  const currentTab = searchParams.get("tab") || "toko";
+
+  const isBerandaActive = isSellerMode
+    ? (currentTab === "toko")
+    : (path === "/");
+    
+  const isProdukActive = isSellerMode
+    ? (currentTab === "produk" || path.startsWith("/dashboard/tambah-produk") || path.includes("/edit"))
+    : path.startsWith("/produk");
+    
+  const isPesananActive = isSellerMode
+    ? (currentTab === "pesanan")
+    : path.startsWith("/pesanan");
+
+  useEffect(() => {
+    if (user && isSellerMode) {
+      api.get("/seller/dashboard")
+        .then((res) => {
+          setNewOrdersCount(res.data?.summary?.pesanan_baru || 0);
+        })
+        .catch(() => {});
+    }
+  }, [user, isSellerMode, path]);
 
   const closeAllMenus = () => {
     setMenuOpen(false);
@@ -27,55 +55,77 @@ export default function Navbar() {
   return (
     <header className="navbar-header">
       <div className="navbar-inner">
-        {/* Left: Logo Qlapa */}
-        <Link to="/" className="navbar-logo-link" onClick={closeAllMenus}>
+        {/* Left: Logo Qlapa (with Hub badge if in seller mode) */}
+        <Link to={isSellerMode ? "/dashboard" : "/"} className="navbar-logo-link" onClick={closeAllMenus}>
           <img
             src="/assets/qlapa-logo.png"
             alt="Qlapa"
             className="navbar-logo-img"
           />
+          {isSellerMode && (
+            <span className="navbar-hub-badge-inline">Hub</span>
+          )}
         </Link>
 
         {/* Tengah: menu dalam glass capsule (Desktop Only) */}
         <nav className="navbar-capsule desktop-only">
           <Link
-            to="/"
+            to={isSellerMode ? "/dashboard?tab=toko" : "/"}
             className={`navbar-menu-item ${isBerandaActive ? "active" : ""}`}
+            onClick={closeAllMenus}
           >
             Beranda
           </Link>
           <Link
-            to="/produk"
+            to={isSellerMode ? "/dashboard?tab=produk" : "/produk"}
             className={`navbar-menu-item ${isProdukActive ? "active" : ""}`}
+            onClick={closeAllMenus}
           >
-            Produk
+            {isSellerMode ? "Produk Saya" : "Produk"}
           </Link>
           <Link
-            to="/pesanan"
+            to={isSellerMode ? "/dashboard?tab=pesanan" : "/pesanan"}
             className={`navbar-menu-item ${isPesananActive ? "active" : ""}`}
+            onClick={closeAllMenus}
           >
-            Pesanan
+            {isSellerMode ? "Pemesanan" : "Pesanan"}
           </Link>
         </nav>
 
-        {/* Kanan: tombol Toko Saya, lalu icon Chat, Keranjang, dan Profil */}
+        {/* Kanan: tombol Toko Saya/Ke Pasar, lalu icon Chat, Keranjang/Notifikasi, dan Profil */}
         <div className="navbar-actions">
-          {/* Tombol Toko Saya (Desktop Only) */}
-          <Link to="/dashboard" className="toko-saya-btn desktop-only" onClick={closeAllMenus}>
-            <Store size={16} />
-            <span>Toko Saya</span>
-          </Link>
+          {isSellerMode ? (
+            /* Button Ke Pasar (Seller Mode) */
+            <Link to="/" className="ke-pasar-btn desktop-only" onClick={closeAllMenus}>
+              <ArrowLeft size={16} />
+              <span>Ke Pasar</span>
+            </Link>
+          ) : (
+            /* Tombol Toko Saya (Buyer Mode) */
+            <Link to={user?.is_seller ? "/dashboard" : "/toko/buka"} className="toko-saya-btn desktop-only" onClick={closeAllMenus}>
+              <Store size={16} />
+              <span>Toko Saya</span>
+            </Link>
+          )}
 
           {/* Icon Chat (Desktop Only) */}
           <Link to="/chat" className="navbar-icon-link desktop-only" title="Obrolan" onClick={closeAllMenus}>
             <MessageSquare size={20} />
           </Link>
 
-          {/* Icon Keranjang (Selalu ada di Mobile & Desktop) */}
-          <Link to="/keranjang" className="navbar-icon-link cart-icon-link" title="Keranjang" onClick={closeAllMenus}>
-            <ShoppingCart size={20} />
-            {count > 0 && <span className="navbar-cart-badge">{count}</span>}
-          </Link>
+          {isSellerMode ? (
+            /* Icon Notifikasi Pesanan Masuk (Seller Mode) */
+            <Link to="/dashboard?tab=pesanan" className="navbar-icon-link bell-icon-link" title="Pesanan Masuk" onClick={closeAllMenus}>
+              <Bell size={20} />
+              {newOrdersCount > 0 && <span className="navbar-cart-badge">{newOrdersCount}</span>}
+            </Link>
+          ) : (
+            /* Icon Keranjang (Buyer Mode) */
+            <Link to="/keranjang" className="navbar-icon-link cart-icon-link" title="Keranjang" onClick={closeAllMenus}>
+              <ShoppingCart size={20} />
+              {count > 0 && <span className="navbar-cart-badge">{count}</span>}
+            </Link>
+          )}
 
           {/* Profil / Auth (Desktop Only) */}
           {!user && (
@@ -115,19 +165,29 @@ export default function Navbar() {
                   >
                     Profil Saya
                   </Link>
+                  {isSellerMode ? (
+                    <Link
+                      to="/"
+                      className="navbar-dropdown-item"
+                      onClick={closeAllMenus}
+                    >
+                      Mode Pembeli (Ke Pasar)
+                    </Link>
+                  ) : (
+                    <Link
+                      to={user.is_seller ? "/dashboard" : "/toko/buka"}
+                      className="navbar-dropdown-item"
+                      onClick={closeAllMenus}
+                    >
+                      {user.is_seller ? "Dashboard Toko" : "Buka Toko"}
+                    </Link>
+                  )}
                   <Link
-                    to="/dashboard"
+                    to={isSellerMode ? "/dashboard?tab=pesanan" : "/pesanan"}
                     className="navbar-dropdown-item"
                     onClick={closeAllMenus}
                   >
-                    {user.is_seller ? "Dashboard Toko" : "Buka Toko"}
-                  </Link>
-                  <Link
-                    to="/pesanan"
-                    className="navbar-dropdown-item"
-                    onClick={closeAllMenus}
-                  >
-                    Riwayat Pesanan
+                    {isSellerMode ? "Pesanan Masuk" : "Riwayat Pesanan"}
                   </Link>
                   <button
                     className="navbar-dropdown-item logout-btn"
@@ -159,28 +219,28 @@ export default function Navbar() {
       {mobileMenuOpen && (
         <div className="navbar-mobile-panel">
           <nav className="navbar-mobile-nav">
-            <Link
-              to="/"
+             <Link
+              to={isSellerMode ? "/dashboard?tab=toko" : "/"}
               className={`navbar-mobile-item ${isBerandaActive ? "active" : ""}`}
               onClick={closeAllMenus}
             >
-              <span>Beranda</span>
+              <span>Beranda {isSellerMode && "Toko"}</span>
               <ChevronRight size={16} />
             </Link>
             <Link
-              to="/produk"
+              to={isSellerMode ? "/dashboard?tab=produk" : "/produk"}
               className={`navbar-mobile-item ${isProdukActive ? "active" : ""}`}
               onClick={closeAllMenus}
             >
-              <span>Produk</span>
+              <span>{isSellerMode ? "Produk Saya" : "Produk"}</span>
               <ChevronRight size={16} />
             </Link>
             <Link
-              to="/pesanan"
+              to={isSellerMode ? "/dashboard?tab=pesanan" : "/pesanan"}
               className={`navbar-mobile-item ${isPesananActive ? "active" : ""}`}
               onClick={closeAllMenus}
             >
-              <span>Pesanan</span>
+              <span>{isSellerMode ? "Pemesanan" : "Pesanan"}</span>
               <ChevronRight size={16} />
             </Link>
             <Link
@@ -191,14 +251,26 @@ export default function Navbar() {
               <span>Chat Obrolan</span>
               <ChevronRight size={16} />
             </Link>
-            <Link
-              to="/dashboard"
-              className="navbar-mobile-item"
-              onClick={closeAllMenus}
-            >
-              <span>Toko Saya</span>
-              <ChevronRight size={16} />
-            </Link>
+            {isSellerMode ? (
+              <Link
+                to="/"
+                className="navbar-mobile-item"
+                style={{ color: "var(--brown-500)" }}
+                onClick={closeAllMenus}
+              >
+                <span>Mode Pembeli (Ke Pasar)</span>
+                <ArrowLeft size={16} />
+              </Link>
+            ) : (
+              <Link
+                to={user?.is_seller ? "/dashboard" : "/toko/buka"}
+                className="navbar-mobile-item"
+                onClick={closeAllMenus}
+              >
+                <span>Toko Saya</span>
+                <ChevronRight size={16} />
+              </Link>
+            )}
             
             <div className="navbar-mobile-divider"></div>
 
@@ -224,10 +296,17 @@ export default function Navbar() {
                   <span>Profil Saya</span>
                   <ChevronRight size={16} />
                 </Link>
-                <Link to="/dashboard" className="navbar-mobile-item" onClick={closeAllMenus}>
-                  <span>{user.is_seller ? "Dashboard Toko" : "Buka Toko"}</span>
-                  <ChevronRight size={16} />
-                </Link>
+                {isSellerMode ? (
+                  <Link to="/" className="navbar-mobile-item" onClick={closeAllMenus}>
+                    <span>Mode Pembeli (Ke Pasar)</span>
+                    <ChevronRight size={16} />
+                  </Link>
+                ) : (
+                  <Link to={user.is_seller ? "/dashboard" : "/toko/buka"} className="navbar-mobile-item" onClick={closeAllMenus}>
+                    <span>{user.is_seller ? "Dashboard Toko" : "Buka Toko"}</span>
+                    <ChevronRight size={16} />
+                  </Link>
+                )}
                 <button
                   className="navbar-mobile-item logout-btn"
                   onClick={() => {

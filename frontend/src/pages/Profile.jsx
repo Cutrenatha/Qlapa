@@ -10,11 +10,50 @@ export default function Profile() {
   const [form, setForm] = useState({
     name: user.name,
     phone: user.phone || "",
+    address: user.address || "",
     store_name: user.store_name || "",
     store_location: user.store_location || "",
     store_description: user.store_description || "",
   });
   const [saving, setSaving] = useState(false);
+  const [suggestions, setSuggestions] = useState([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const [typingTimeout, setTypingTimeout] = useState(null);
+
+  const handleAddressChange = (val) => {
+    setForm((prev) => ({ ...prev, address: val }));
+    
+    if (typingTimeout) clearTimeout(typingTimeout);
+    
+    if (val.trim().length < 4) {
+      setSuggestions([]);
+      return;
+    }
+    
+    setLoadingSuggestions(true);
+    setTypingTimeout(
+      setTimeout(async () => {
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(val)}&countrycodes=id&limit=5`
+          );
+          if (res.ok) {
+            const data = await res.json();
+            setSuggestions(data);
+          }
+        } catch (err) {
+          console.error("OSM autocomplete error:", err);
+        } finally {
+          setLoadingSuggestions(false);
+        }
+      }, 500)
+    );
+  };
+
+  const selectSuggestion = (item) => {
+    setForm((prev) => ({ ...prev, address: item.display_name }));
+    setSuggestions([]);
+  };
 
   const submit = async (e) => {
     e.preventDefault();
@@ -23,6 +62,7 @@ export default function Profile() {
       const data = {
         name: form.name,
         phone: form.phone,
+        address: form.address,
       };
 
       if (user.is_seller) {
@@ -94,6 +134,68 @@ export default function Profile() {
             onChange={(e) => setForm({ ...form, phone: e.target.value })}
             placeholder="Nomor HP aktif"
           />
+        </div>
+
+        <div className="field" style={{ position: "relative" }}>
+          <label>Alamat Utama (untuk Pengiriman)</label>
+          <textarea
+            value={form.address}
+            onChange={(e) => handleAddressChange(e.target.value)}
+            placeholder="Ketik nama jalan, RT/RW, kelurahan/desa, kecamatan, kota/kabupaten..."
+            style={{
+              minHeight: "80px",
+              padding: "12px 14px",
+              borderRadius: "8px",
+              border: "1.5px solid rgba(0,0,0,0.08)",
+              fontSize: "0.92rem",
+              width: "100%",
+              boxSizing: "border-box"
+            }}
+          />
+          {loadingSuggestions && (
+            <div style={{ position: "absolute", right: 12, top: 42, fontSize: "0.78rem", color: "var(--ink-soft)" }}>
+              Mencari lokasi...
+            </div>
+          )}
+          {suggestions.length > 0 && (
+            <ul
+              style={{
+                position: "absolute",
+                top: "100%",
+                left: 0,
+                right: 0,
+                background: "#fff",
+                border: "1.5px solid rgba(0,0,0,0.08)",
+                borderRadius: "8px",
+                boxShadow: "0 6px 16px rgba(0,0,0,0.12)",
+                zIndex: 1000,
+                listStyle: "none",
+                padding: "4px 0",
+                margin: "4px 0 0 0",
+                maxHeight: "180px",
+                overflowY: "auto"
+              }}
+            >
+              {suggestions.map((item, idx) => (
+                <li
+                  key={idx}
+                  onClick={() => selectSuggestion(item)}
+                  style={{
+                    padding: "10px 14px",
+                    cursor: "pointer",
+                    fontSize: "0.85rem",
+                    borderBottom: idx < suggestions.length - 1 ? "1px solid rgba(0,0,0,0.04)" : "none",
+                    color: "var(--ink)",
+                    transition: "background 0.2s"
+                  }}
+                  onMouseEnter={(e) => (e.target.style.background = "rgba(92, 61, 46, 0.05)")}
+                  onMouseLeave={(e) => (e.target.style.background = "none")}
+                >
+                  📍 {item.display_name}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
         {user.is_seller && (

@@ -77,26 +77,57 @@ export default function Orders() {
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {orders.map((o) => (
             <div key={o.id} className="card" style={{ padding: 24, border: "1px solid rgba(0,0,0,0.06)", boxShadow: "var(--shadow-sm)" }}>
-              <div className="row between" style={{ marginBottom: 12 }}>
-                <strong style={{ fontSize: "1.05rem", color: "var(--ink)" }}>#ORD-{String(o.id).padStart(6, "0")}</strong>
+              <div className="row between" style={{ marginBottom: 12, alignItems: "center" }}>
+                <div className="row gap-8" style={{ alignItems: "center" }}>
+                  <strong style={{ fontSize: "1.05rem", color: "var(--ink)" }}>#ORD-{String(o.id).padStart(6, "0")}</strong>
+                  <span
+                    className="badge"
+                    style={{
+                      background: o.payment_status === "paid" ? "rgba(52, 199, 89, 0.12)" : "rgba(255, 59, 48, 0.12)",
+                      color: o.payment_status === "paid" ? "#248a3d" : "#ff3b30",
+                      border: "none",
+                      fontSize: "0.78rem",
+                      fontWeight: 600
+                    }}
+                  >
+                    {o.payment_status === "paid" ? "Sudah Dibayar" : "Belum Dibayar"}
+                  </span>
+                </div>
                 <span className={`badge ${STATUS_COLOR[o.status]}`}>{STATUS_LABEL[o.status]}</span>
               </div>
               <p style={{ fontSize: "0.88rem", color: "var(--ink-soft)", marginBottom: 6 }}>
                 {view === "seller" ? `Pembeli: ${o.buyer_name}` : `Penjual: ${o.seller_store}`}
               </p>
-              <p style={{ fontSize: "0.82rem", color: "var(--ink-soft)", marginBottom: 16 }}>📍 {o.shipping_address}</p>
+              <p style={{ fontSize: "0.82rem", color: "var(--ink-soft)", marginBottom: 16 }}>
+                📍 {o.shipping_address}
+              </p>
               
               <div style={{ background: "rgba(0,0,0,0.01)", padding: 16, borderRadius: 12, border: "1px solid rgba(0,0,0,0.03)" }}>
                 {o.items.map((it) => (
-                  <div key={it.id} className="row between" style={{ fontSize: "0.88rem", marginTop: 8, firstOfType: { marginTop: 0 } }}>
+                  <div key={it.id} className="row between" style={{ fontSize: "0.88rem", marginTop: 8 }}>
                     <span style={{ color: "var(--ink)" }}>{it.product_name} <span style={{ color: "var(--ink-soft)" }}>× {it.qty}</span></span>
                     <span style={{ fontWeight: 600, color: "var(--ink)" }}>Rp{it.subtotal.toLocaleString("id-ID")}</span>
                   </div>
                 ))}
               </div>
               
-              <div className="row between" style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid var(--line)", fontWeight: 700, fontSize: "1.05rem", color: "var(--ink)" }}>
-                <span>Total</span><span>Rp{o.total.toLocaleString("id-ID")}</span>
+              <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid var(--line)", display: "grid", gap: "6px" }}>
+                <div className="row between" style={{ fontSize: "0.85rem", color: "var(--ink-soft)" }}>
+                  <span>Subtotal Produk</span>
+                  <span>Rp{(o.total - (o.admin_fee || 0) - (o.shipping_cost || 0)).toLocaleString("id-ID")}</span>
+                </div>
+                <div className="row between" style={{ fontSize: "0.85rem", color: "var(--ink-soft)" }}>
+                  <span>Biaya Admin (10%)</span>
+                  <span>Rp{(o.admin_fee || 0).toLocaleString("id-ID")}</span>
+                </div>
+                <div className="row between" style={{ fontSize: "0.85rem", color: "var(--ink-soft)" }}>
+                  <span>Ongkos Kirim</span>
+                  <span>{o.shipping_cost > 0 ? `Rp${o.shipping_cost.toLocaleString("id-ID")}` : "Gratis (Pick Up)"}</span>
+                </div>
+                <div className="row between" style={{ marginTop: 8, paddingTop: 8, borderTop: "1px dashed var(--line)", fontWeight: 700, fontSize: "1.1rem", color: "var(--ink)" }}>
+                  <span>Total</span>
+                  <span style={{ color: "var(--brand)" }}>Rp{o.total.toLocaleString("id-ID")}</span>
+                </div>
               </div>
 
               {view === "buyer" && o.status === "dikirim" && (

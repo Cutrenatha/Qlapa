@@ -14,6 +14,7 @@ class User(db.Model):
     password_hash = db.Column(db.String(255), nullable=False)
     role = db.Column(db.String(10), nullable=False, default="buyer")  # legacy field, kept for compat
     phone = db.Column(db.String(30))
+    address = db.Column(db.String(300))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     # Every account is a buyer by default. Opening a store (is_seller=True)
@@ -49,6 +50,7 @@ class User(db.Model):
             "is_seller": self.is_seller,
             "is_admin": self.is_admin,
             "phone": self.phone,
+            "address": self.address,
             "avatar_url": self.avatar_url,
             "store_name": self.store_name,
             "store_location": self.store_location,
@@ -124,9 +126,14 @@ class Order(db.Model):
     buyer_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     seller_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     total = db.Column(db.Float, nullable=False)
+    admin_fee = db.Column(db.Float, default=0.0)
+    shipping_cost = db.Column(db.Float, default=0.0)
     status = db.Column(db.String(30), default="menunggu_konfirmasi")
     # status flow: menunggu_konfirmasi -> diproses -> dikirim -> selesai (escrow released) / ditolak
     shipping_address = db.Column(db.String(300))
+    payment_status = db.Column(db.String(20), default="pending")  # pending, paid, failed
+    snap_token = db.Column(db.String(100), nullable=True)
+    midtrans_tx_id = db.Column(db.String(100), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     items = db.relationship("OrderItem", backref="order", lazy=True, cascade="all, delete-orphan")
@@ -144,8 +151,13 @@ class Order(db.Model):
             "seller_id": self.seller_id,
             "seller_store": (self.seller.store_name or self.seller.name) if self.seller else None,
             "total": self.total,
+            "admin_fee": self.admin_fee,
+            "shipping_cost": self.shipping_cost,
             "status": self.status,
             "shipping_address": self.shipping_address,
+            "payment_status": self.payment_status,
+            "snap_token": self.snap_token,
+            "midtrans_tx_id": self.midtrans_tx_id,
             "created_at": self.created_at.isoformat(),
             "items": [i.serialize() for i in self.items],
         }

@@ -13,7 +13,20 @@ from flask_jwt_extended import (
     JWTManager, create_access_token, jwt_required, get_jwt_identity
 )
 
-load_dotenv()
+load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env'))
+
+import midtransclient
+import hashlib
+
+print("Midtrans Server Key Loaded:", "Yes" if os.environ.get("MIDTRANS_SERVER_KEY") else "No")
+print("Midtrans Client Key Loaded:", "Yes" if os.environ.get("MIDTRANS_CLIENT_KEY") else "No")
+
+# Initialize Midtrans Snap client
+midtrans_snap = midtransclient.Snap(
+    is_production=False,
+    server_key=os.environ.get("MIDTRANS_SERVER_KEY"),
+    client_key=os.environ.get("MIDTRANS_CLIENT_KEY")
+)
 
 from models import db, User, Product, Order, OrderItem, ChatMessage, Review
 from ai_engine import (
@@ -27,9 +40,15 @@ from ai_engine import (
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
 app = Flask(__name__)
-app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{os.path.join(BASE_DIR, 'qlapa.db')}"
+
+# Support DATABASE_URL from Railway/Render (PostgreSQL) or fallback to local SQLite
+db_url = os.environ.get("DATABASE_URL", f"sqlite:///{os.path.join(BASE_DIR, 'qlapa.db')}")
+# Fix Railway's postgres:// → postgresql:// (SQLAlchemy 1.4+)
+if db_url.startswith("postgres://"):
+    db_url = db_url.replace("postgres://", "postgresql://", 1)
+app.config["SQLALCHEMY_DATABASE_URI"] = db_url
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-app.config["JWT_SECRET_KEY"] = "qlapa-dev-secret-change-me"
+app.config["JWT_SECRET_KEY"] = os.environ.get("JWT_SECRET_KEY", "qlapa-dev-secret-change-me")
 app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(days=7)
 
 CORS(app, resources={r"/api/*": {"origins": "*"}})
@@ -174,7 +193,7 @@ def me():
 def update_me():
     user = current_user()
     data = request.get_json(force=True)
-    for field in ["name", "phone", "store_name", "store_location", "store_description"]:
+    for field in ["name", "phone", "address", "store_name", "store_location", "store_description"]:
         if field in data:
             setattr(user, field, data[field])
     db.session.commit()
@@ -490,14 +509,17 @@ def seller_dashboard():
 @app.post("/api/orders")
 @jwt_required()
 def create_order():
-    """Body: { items: [{product_id, qty}], shipping_address }
-    Membuat 1 order per seller (mengelompokkan item keranjang berdasarkan penjual)."""
+    """Body: { items: [{product_id, qty}], shipping_address, shipping_method }
+    Membuat 1 order per seller, menghitung biaya admin 10%, ongkos kirim, dan membuat transaksi Midtrans Snap."""
     user = current_user()
 
     data = request.get_json(force=True)
     items = data.get("items", [])
     if not items:
         return jsonify({"error": "Keranjang kosong"}), 400
+
+    shipping_method = data.get("shipping_method", "kirim")
+    shipping_address = data.get("shipping_address", "")
 
     grouped = {}
     for it in items:
@@ -508,26 +530,158 @@ def create_order():
             return jsonify({"error": f"Stok {product.name} tidak mencukupi"}), 400
         grouped.setdefault(product.seller_id, []).append((product, it["qty"]))
 
+    import time
+    midtrans_tx_id = f"QLAPA-TX-{int(time.time() * 1000)}-{user.id}"
+
     created_orders = []
+    combined_total = 0
+    midtrans_items = []
+
     for seller_id, pairs in grouped.items():
-        total = sum(p.price * qty for p, qty in pairs)
+        subtotal = sum(p.price * qty for p, qty in pairs)
+        admin_fee = round(subtotal * 0.10)
+        shipping_cost = 10000.0 if shipping_method == "kirim" else 0.0
+        order_total = subtotal + admin_fee + shipping_cost
+
         order = Order(
             buyer_id=user.id,
             seller_id=seller_id,
-            total=total,
-            shipping_address=data.get("shipping_address", ""),
+            total=order_total,
+            admin_fee=admin_fee,
+            shipping_cost=shipping_cost,
+            shipping_address=shipping_address if shipping_method == "kirim" else "Ambil Sendiri (Pick Up)",
             status="menunggu_konfirmasi",
+            payment_status="pending",
+            midtrans_tx_id=midtrans_tx_id
         )
         db.session.add(order)
         db.session.flush()
+
         for p, qty in pairs:
             db.session.add(OrderItem(order_id=order.id, product_id=p.id,
                                       product_name=p.name, qty=qty, price=p.price))
             p.stock -= qty
+            
+            midtrans_items.append({
+                "id": f"prod-{p.id}",
+                "price": int(p.price),
+                "quantity": int(qty),
+                "name": p.name[:50]
+            })
+
+        # Biaya admin
+        midtrans_items.append({
+            "id": f"admin-{order.id}",
+            "price": int(admin_fee),
+            "quantity": 1,
+            "name": f"Biaya Admin 10% (Pesanan #{order.id})"
+        })
+
+        # Ongkos kirim
+        if shipping_cost > 0:
+            midtrans_items.append({
+                "id": f"ship-{order.id}",
+                "price": int(shipping_cost),
+                "quantity": 1,
+                "name": f"Ongkos Kirim (Pesanan #{order.id})"
+            })
+
+        combined_total += order_total
         created_orders.append(order)
 
+    # Request snap token ke Midtrans
+    snap_param = {
+        "transaction_details": {
+            "order_id": midtrans_tx_id,
+            "gross_amount": int(combined_total)
+        },
+        "item_details": midtrans_items,
+        "customer_details": {
+            "first_name": user.name,
+            "email": user.email,
+            "phone": user.phone or ""
+        }
+    }
+
+    try:
+        transaction = midtrans_snap.create_transaction(snap_param)
+        snap_token = transaction.get("token")
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": f"Gagal membuat transaksi Midtrans: {str(e)}"}), 500
+
+    for order in created_orders:
+        order.snap_token = snap_token
+
     db.session.commit()
-    return jsonify([o.serialize() for o in created_orders]), 201
+
+    return jsonify({
+        "snap_token": snap_token,
+        "orders": [o.serialize() for o in created_orders]
+    }), 201
+
+
+@app.post("/api/payments/notification")
+def midtrans_webhook():
+    """Webhook callback dari Midtrans untuk mengupdate status pembayaran secara otomatis."""
+    data = request.get_json(force=True)
+    
+    server_key = os.environ.get("MIDTRANS_SERVER_KEY", "")
+    order_id = data.get("order_id", "")
+    status_code = data.get("status_code", "")
+    gross_amount = data.get("gross_amount", "")
+    signature_key = data.get("signature_key", "")
+    
+    payload = f"{order_id}{status_code}{gross_amount}{server_key}"
+    calculated = hashlib.sha512(payload.encode('utf-8')).hexdigest()
+    
+    if calculated != signature_key:
+        return jsonify({"error": "Signature tidak valid"}), 400
+        
+    transaction_status = data.get("transaction_status")
+    fraud_status = data.get("fraud_status")
+    
+    is_success = False
+    if transaction_status == "capture":
+        if fraud_status == "accept":
+            is_success = True
+    elif transaction_status == "settlement":
+        is_success = True
+        
+    if is_success:
+        orders = Order.query.filter_by(midtrans_tx_id=order_id).all()
+        for o in orders:
+            o.payment_status = "paid"
+        db.session.commit()
+    elif transaction_status in ["deny", "expire", "cancel"]:
+        orders = Order.query.filter_by(midtrans_tx_id=order_id).all()
+        for o in orders:
+            o.payment_status = "failed"
+            # Kembalikan stok
+            for item in o.items:
+                product = db.session.get(Product, item.product_id)
+                if product:
+                    product.stock += item.qty
+        db.session.commit()
+        
+    return jsonify({"status": "OK"}), 200
+
+
+@app.post("/api/orders/pay-success")
+@jwt_required()
+def pay_success():
+    """Callback cadangan dari frontend jika webhook tertunda."""
+    data = request.get_json(force=True)
+    snap_token = data.get("snap_token")
+    if not snap_token:
+        return jsonify({"error": "Snap token wajib diisi"}), 400
+        
+    orders = Order.query.filter_by(snap_token=snap_token).all()
+    for o in orders:
+        o.payment_status = "paid"
+    db.session.commit()
+    
+    return jsonify({"message": "Status pembayaran berhasil diperbarui"}), 200
 
 
 @app.get("/api/orders")

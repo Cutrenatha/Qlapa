@@ -4,7 +4,7 @@ import api from "../api.js";
 import { useToast } from "../context/ToastContext.jsx";
 
 const CATEGORIES = ["Ampas", "Tempurung", "Sabut", "Daun", "Air Kelapa"];
-const CONDITIONS = ["Kering", "Basah", "Segar"];
+const CONDITIONS = ["Kering", "Segar"];
 
 export default function AddProduct() {
   const navigate = useNavigate();
@@ -150,18 +150,20 @@ export default function AddProduct() {
   };
 
   return (
-    <div className="section container" style={{ maxWidth: 640 }}>
-      <span className="eyebrow">Toko Saya</span>
-      <h1 style={{ fontSize: "1.8rem", marginTop: 6, marginBottom: 24 }}>
+    <div className="section container" style={{ maxWidth: 640, marginTop: 24 }}>
+      <h1 style={{ fontSize: "1.8rem", fontWeight: 600, fontFamily: "var(--font-display)", marginBottom: 6 }}>
         Tambah Produk Baru
       </h1>
+      <p style={{ fontSize: "0.88rem", color: "var(--ink-soft)", marginBottom: 24 }}>
+        Unggah foto limbah kelapa Anda dan gunakan Qlapa AI untuk mengisi data produk secara otomatis.
+      </p>
 
       <form onSubmit={submit}>
         {/* ---------- STEP 1: FOTO PRODUK ---------- */}
-        <div className="card" style={{ padding: 24, marginBottom: 20 }}>
-          <div className="row gap-8" style={{ marginBottom: 14 }}>
-            <span className="badge">Langkah 1</span>
-            <strong style={{ fontSize: "1.02rem" }}>Unggah Foto Produk</strong>
+        <div className="card" style={{ padding: 24, marginBottom: 20, borderRadius: 16, border: "1px solid rgba(0,0,0,0.05)" }}>
+          <div className="row gap-8" style={{ marginBottom: 16, alignItems: "center" }}>
+            <span className="badge" style={{ background: "var(--brown-500)", color: "#fff", border: "none", padding: "4px 10px", borderRadius: 6, fontWeight: 600, fontSize: "0.72rem" }}>Langkah 1</span>
+            <strong style={{ fontSize: "0.95rem" }}>Unggah Foto Produk</strong>
           </div>
 
           {!imagePreview ? (
@@ -175,21 +177,21 @@ export default function AddProduct() {
                 alignItems: "center",
                 justifyContent: "center",
                 gap: 8,
-                border: "2px dashed var(--line)",
-                borderRadius: "var(--radius-md)",
-                padding: "40px 16px",
+                border: "2px dashed rgba(0, 0, 0, 0.08)",
+                borderRadius: 14,
+                padding: "48px 16px",
                 cursor: "pointer",
-                background: "var(--cream-2)",
+                background: "rgba(0, 0, 0, 0.01)",
                 textAlign: "center",
+                transition: "all 0.2s ease"
               }}
             >
-              <div style={{ fontSize: "2rem" }}>📷</div>
-              <strong style={{ color: "var(--green-800)" }}>
+              <div style={{ fontSize: "2.4rem", marginBottom: 4 }}>📸</div>
+              <strong style={{ color: "var(--brown-500)", fontSize: "0.95rem" }}>
                 Klik untuk pilih foto
               </strong>
-              <span className="field-hint">
-                atau tarik & lepas file ke sini &middot; JPG, PNG, WEBP, maks
-                8MB
+              <span className="field-hint" style={{ fontSize: "0.78rem", color: "var(--ink-soft)" }}>
+                atau tarik & lepas file ke sini &middot; JPG, PNG, WEBP, maks 8MB
               </span>
             </label>
           ) : (
@@ -273,18 +275,18 @@ export default function AddProduct() {
         {/* ---------- STEP 2: DETAIL PRODUK ---------- */}
         <div
           className="card"
-          style={{ padding: 24, opacity: imageFile ? 1 : 0.55 }}
+          style={{ padding: 24, opacity: imageFile ? 1 : 0.55, borderRadius: 16, border: "1px solid rgba(0,0,0,0.05)", boxShadow: "0 2px 8px rgba(0,0,0,0.02)", background: "#ffffff" }}
         >
           <fieldset
             disabled={false}
             style={{ border: "none", padding: 0, margin: 0 }}
           >
-            <div className="row gap-8" style={{ marginBottom: 14 }}>
-              <span className="badge">Langkah 2</span>
-              <strong style={{ fontSize: "1.02rem" }}>Detail Produk</strong>
+            <div className="row gap-8" style={{ marginBottom: 16, alignItems: "center" }}>
+              <span className="badge" style={{ background: "var(--brown-500)", color: "#fff", border: "none", padding: "4px 10px", borderRadius: 6, fontWeight: 600, fontSize: "0.72rem" }}>Langkah 2</span>
+              <strong style={{ fontSize: "0.95rem" }}>Detail Produk</strong>
               {!imageFile && (
-                <span className="field-hint">
-                  — unggah foto dulu untuk mengisi bagian ini
+                <span className="field-hint" style={{ fontSize: "0.82rem", color: "var(--danger)" }}>
+                  (Unggah foto dulu untuk mengisi bagian ini)
                 </span>
               )}
             </div>
@@ -382,9 +384,10 @@ export default function AddProduct() {
         <div
           className="card"
           style={{
-            padding: 16,
-            background: "var(--green-100)",
-            border: "1px solid var(--green-500)",
+            padding: 20,
+            background: "var(--cream-100)",
+            border: "1px solid var(--brown-300)",
+            borderRadius: 16,
             margin: "20px 0",
             opacity: imageFile ? 1 : 0.55,
           }}
@@ -393,27 +396,31 @@ export default function AddProduct() {
             disabled={false}
             style={{ border: "none", padding: 0, margin: 0 }}
           >
-            <div className="row between wrap gap-8" style={{ marginBottom: 8 }}>
-              <strong>🤖 Deskripsi Otomatis Qlapa AI</strong>
+            <div className="row between wrap gap-8" style={{ marginBottom: 12, alignItems: "center" }}>
+              <span className="row gap-4" style={{ alignItems: "center", fontWeight: 600, fontSize: "0.95rem", color: "var(--brown-800)" }}>
+                Deskripsi Otomatis Qlapa AI
+              </span>
               <button
                 type="button"
-                className="btn btn-secondary btn-sm"
+                className="btn btn-secondary"
+                style={{ padding: "6px 14px", borderRadius: 999, fontSize: "0.78rem" }}
                 onClick={generateDesc}
               >
-                Gunakan AI untuk Sarankan Semua Field
+                Sarankan Data dengan AI
               </button>
             </div>
             <textarea
               value={aiDesc}
               onChange={(e) => setAiDesc(e.target.value)}
               placeholder="Analisis foto akan mengisi deskripsi ini secara otomatis, lalu edit sesuai kebutuhan."
-              style={{ minHeight: 120, width: "100%" }}
+              style={{ minHeight: 100, width: "100%", borderRadius: 10, border: "1px solid rgba(0,0,0,0.08)", padding: 12, fontSize: "0.88rem", outline: "none", resize: "vertical", fontFamily: "inherit" }}
             />
           </fieldset>
         </div>
 
         <button
           className="btn btn-primary btn-block"
+          style={{ padding: "14px 24px", borderRadius: 999, fontSize: "0.92rem", fontWeight: 600 }}
           type="submit"
           disabled={saving || !imageFile}
         >

@@ -27,7 +27,9 @@ export default function App() {
   const isDashboard = location.pathname.startsWith("/dashboard");
   const isAdmin = location.pathname.startsWith("/admin");
   const isAuth = location.pathname === "/masuk" || location.pathname === "/daftar";
-  const hideShell = isDashboard || isAdmin || isAuth;
+  const isOpenStore = location.pathname === "/toko/buka";
+  const hideShell = isAdmin || isAuth || isOpenStore;
+  const hideFooter = hideShell || isDashboard;
 
   return (
     <>
@@ -52,7 +54,7 @@ export default function App() {
         <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
         <Route path="*" element={<NotFound />} />
       </Routes>
-      {!hideShell && <Footer />}
+      {!hideFooter && <Footer />}
       </div>
     </>
   );

@@ -13,9 +13,8 @@ export default function ProtectedRoute({ children, requireSeller }) {
     );
   }
   if (!user) return <Navigate to="/masuk" replace />;
-  // requireSeller routes (tambah/edit produk) need an opened store; the main
-  // /dashboard route itself stays open to any logged-in user so it can show
-  // the "Buka Toko" onboarding prompt on the same account.
-  if (requireSeller && !user.is_seller) return <Navigate to="/dashboard" replace />;
+  // requireSeller routes (tambah/edit produk) need an opened store.
+  // If not seller, redirect to the Buka Toko page.
+  if (requireSeller && !user.is_seller) return <Navigate to="/toko/buka" replace />;
   return children;
 }
