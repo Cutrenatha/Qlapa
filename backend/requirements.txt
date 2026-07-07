@@ -9,3 +9,4 @@ google-genai
 python-dotenv
 midtransclient
 gunicorn
+psycopg2-binary
