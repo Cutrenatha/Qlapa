@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import api from "../api.js";
-import ProductCard from "../components/ProductCard.jsx";
-import AIChatWidget from "../components/AIChatWidget.jsx";
+import { MapPin, Package, ChevronRight } from "lucide-react";
 
 const CATEGORIES = ["Ampas", "Tempurung", "Sabut", "Daun", "Air Kelapa"];
 
@@ -39,11 +38,13 @@ export default function ProductList() {
   };
 
   return (
-    <div className="section">
+    <div className="fw-section" style={{ minHeight: '70vh' }}>
       <div className="container">
-        <div style={{ marginBottom: 28 }}>
-          <span className="eyebrow">Katalog</span>
-          <h1 style={{ fontSize: "2rem", marginTop: 6 }}>Cari limbah & produk turunan kelapa</h1>
+        <div className="fw-header" style={{ marginBottom: 10 }}>
+          <div>
+            <h2 className="fw-title">Katalog Produk 🥥</h2>
+            <p className="fw-subtitle">Cari limbah & produk turunan kelapa</p>
+          </div>
         </div>
 
         <form onSubmit={applyFilters} className="card" style={styles.filterBar}>
@@ -88,12 +89,35 @@ export default function ProductList() {
         ) : products.length === 0 ? (
           <div className="empty-state">Tidak ada produk yang cocok dengan pencarianmu.</div>
         ) : (
-          <div className="grid grid-4">
-            {products.map((p) => <ProductCard key={p.id} product={p} />)}
+          <div className="fw-grid">
+            {products.map((p) => (
+              <Link key={p.id} to={`/produk/${p.id}`} className="fw-card" style={{ textDecoration: 'none' }}>
+                <div className="fw-card-img-wrapper">
+                  {p.image_url ? (
+                    <img src={p.image_url} alt={p.name} className="fw-card-img" />
+                  ) : (
+                    <div className="fw-card-img fw-card-placeholder">🥥</div>
+                  )}
+                  <div className="fw-badge">
+                    {p.category}
+                  </div>
+                </div>
+                <div className="fw-card-body">
+                  <h4 className="fw-card-name">{p.name}</h4>
+                  <p className="fw-card-price">Rp{Number(p.price).toLocaleString('id-ID')} / {p.unit}</p>
+                  <p className="fw-card-location"><MapPin size={12} /> {p.seller?.store_location || 'Indonesia'}</p>
+                  <div className="fw-card-footer">
+                    <span className="fw-stock">
+                      <Package size={11} /> {p.stock} {p.unit} tersedia
+                    </span>
+                    <span className="fw-detail-btn">Lihat Detail</span>
+                  </div>
+                </div>
+              </Link>
+            ))}
           </div>
         )}
       </div>
-      <AIChatWidget category={category} />
     </div>
   );
 }

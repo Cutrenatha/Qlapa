@@ -35,35 +35,46 @@ export default function Checkout() {
   }
 
   return (
-    <div className="section container" style={{ maxWidth: 640 }}>
-      <h1 style={{ fontSize: "1.8rem", marginBottom: 24 }}>Checkout</h1>
+    <div className="section container" style={{ maxWidth: 640, minHeight: '80vh' }}>
+      <h1 style={{ fontSize: "2.2rem", fontFamily: "var(--font-display)", fontWeight: 700, marginBottom: 28, color: "var(--ink)" }}>Checkout</h1>
 
-      <div className="card" style={{ padding: 20, marginBottom: 20 }}>
-        <h3 style={{ fontSize: "1rem", marginBottom: 12 }}>Ringkasan Pesanan</h3>
+      <div className="card" style={{ padding: 24, marginBottom: 24, border: "1px solid rgba(0,0,0,0.06)", boxShadow: "var(--shadow-sm)" }}>
+        <h3 style={{ fontSize: "1.1rem", fontWeight: 700, marginBottom: 16, color: "var(--ink)" }}>Ringkasan Pesanan</h3>
         {items.map(({ product, qty }) => (
-          <div key={product.id} className="row between" style={{ marginBottom: 8, fontSize: "0.9rem" }}>
+          <div key={product.id} className="row between" style={{ marginBottom: 10, fontSize: "0.92rem", color: "var(--ink-soft)" }}>
             <span>{product.name} × {qty}</span>
-            <span>Rp{(product.price * qty).toLocaleString("id-ID")}</span>
+            <span style={{ fontWeight: 600, color: "var(--ink)" }}>Rp{(product.price * qty).toLocaleString("id-ID")}</span>
           </div>
         ))}
-        <div className="row between" style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--line)", fontWeight: 700 }}>
-          <span>Total</span>
+        <div className="row between" style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid var(--line)", fontWeight: 700, fontSize: "1.1rem", color: "var(--ink)" }}>
+          <span>Total Bayar</span>
           <span>Rp{total.toLocaleString("id-ID")}</span>
         </div>
       </div>
 
-      <form onSubmit={submit} className="card" style={{ padding: 20 }}>
+      <form onSubmit={submit} className="card" style={{ padding: 28, border: "1px solid rgba(0,0,0,0.06)", boxShadow: "var(--shadow-sm)" }}>
         <div className="field">
-          <label>Alamat Pengiriman</label>
-          <textarea required value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Nama jalan, desa/kelurahan, kecamatan, kabupaten/kota" />
+          <label style={{ fontSize: "0.9rem", fontWeight: 600, color: "var(--ink)", marginBottom: 8 }}>Alamat Pengiriman</label>
+          <textarea
+            required
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            placeholder="Tuliskan nama jalan, RT/RW, kelurahan/desa, kecamatan, kota/kabupaten, dan provinsi secara lengkap"
+            style={{ padding: '14px 16px', borderRadius: '12px', border: '1.5px solid rgba(0,0,0,0.08)', fontSize: '0.92rem' }}
+          />
         </div>
 
-        <div className="card" style={{ padding: 14, background: "var(--green-100)", marginBottom: 16, border: "1px solid var(--green-500)" }}>
-          🔒 <strong>Pembayaran Escrow</strong> — dana kamu akan ditahan aman oleh Qlapa hingga kamu
-          mengonfirmasi barang diterima. Baru setelah itu dana dicairkan ke penjual.
+        <div className="card" style={{ padding: 18, background: "rgba(52, 199, 89, 0.05)", marginBottom: 24, border: "1px solid rgba(52, 199, 89, 0.18)", borderRadius: '12px', display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+          <span style={{ fontSize: '1.25rem' }}>🔒</span>
+          <div>
+            <strong style={{ display: 'block', color: 'var(--green-900)', fontSize: '0.88rem', marginBottom: 4 }}>Pembayaran Escrow Qlapa</strong>
+            <p style={{ color: 'var(--green-800)', fontSize: '0.82rem', lineHeight: 1.5 }}>
+              Dana Anda ditahan aman oleh pihak ketiga (Qlapa) hingga barang sampai dan Anda konfirmasi. Dana baru akan dicairkan ke penjual setelahnya.
+            </p>
+          </div>
         </div>
 
-        <button className="btn btn-primary btn-block" type="submit" disabled={loading}>
+        <button className="btn btn-primary btn-block" style={{ padding: "14px 24px" }} type="submit" disabled={loading}>
           {loading ? "Memproses…" : "Bayar & Buat Pesanan"}
         </button>
       </form>

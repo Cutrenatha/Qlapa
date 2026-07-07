@@ -212,7 +212,7 @@ function DashboardContent() {
 
   if (!data) {
     return (
-      <div style={styles.shell}>
+      <div className="container" style={{ paddingBottom: 90 }}>
         <div className="empty-state">
           <div className="spinner" style={{ margin: "0 auto" }} />
         </div>
@@ -221,7 +221,7 @@ function DashboardContent() {
   }
 
   return (
-    <div style={styles.shell}>
+    <div className="container" style={{ paddingBottom: 90 }}>
       <HubHeader />
 
       {tab === "toko" && <StoreOverview data={data} />}
@@ -667,7 +667,7 @@ function CheckIcon() {
 }
 
 const styles = {
-  shell: { maxWidth: 520, margin: "0 auto", paddingBottom: 90 },
+  shell: { maxWidth: 1280, margin: "0 auto", paddingBottom: 90 },
   header: { padding: "20px 20px 14px" },
   logo: {
     fontFamily: "var(--font-display)",

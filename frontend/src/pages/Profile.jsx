@@ -43,15 +43,14 @@ export default function Profile() {
   };
 
   return (
-    <div className="section container" style={{ maxWidth: 560 }}>
-      <h1 style={{ fontSize: "1.8rem", marginBottom: 6 }}>Profil Saya</h1>
-      <div
-        className="row gap-8"
-        style={{ marginBottom: 24, alignItems: "center" }}
-      >
-        <span>{user.email}</span>
-        <span className="badge">Pembeli</span>
-        {user.is_seller && <span className="badge badge-brown">Penjual</span>}
+    <div className="section container" style={{ maxWidth: 580, minHeight: '80vh' }}>
+      <div style={{ marginBottom: 28 }}>
+        <h1 style={{ fontSize: "2.2rem", fontFamily: "var(--font-display)", fontWeight: 700, marginBottom: 8, color: "var(--ink)" }}>Profil Saya</h1>
+        <div className="row gap-8" style={{ alignItems: "center" }}>
+          <span style={{ fontSize: '0.9rem', color: 'var(--ink-soft)' }}>{user.email}</span>
+          <span className="badge">Pembeli</span>
+          {user.is_seller && <span className="badge badge-brown">Penjual</span>}
+        </div>
       </div>
 
       <AvatarUploader />
@@ -60,31 +59,31 @@ export default function Profile() {
         <div
           className="card"
           style={{
-            padding: 20,
-            marginBottom: 20,
-            background: "var(--brown-100)",
-            border: "1px solid var(--brown-300)",
+            padding: 24,
+            marginBottom: 28,
+            background: "rgba(92, 61, 46, 0.04)",
+            border: "1px solid rgba(92, 61, 46, 0.12)",
           }}
         >
-          <strong style={{ display: "block", marginBottom: 6 }}>
+          <strong style={{ display: "block", marginBottom: 6, fontSize: '1rem', color: 'var(--ink)' }}>
             Belum punya toko?
           </strong>
-          <p style={{ marginBottom: 12 }}>
-            Buka toko dengan akun yang sama ini — tidak perlu daftar akun baru —
-            dan mulai jual limbah kelapa kamu sendiri.
+          <p style={{ marginBottom: 16, fontSize: '0.88rem', lineHeight: 1.5, color: 'var(--ink-soft)' }}>
+            Mulai jual limbah kelapa Anda sendiri di Qlapa. Cukup lengkapi data toko Anda dengan akun yang sama ini.
           </p>
-          <Link to="/toko/buka" className="btn btn-primary btn-sm">
+          <Link to="/toko/buka" className="btn btn-primary btn-sm" style={{ padding: '10px 20px' }}>
             + Buka Toko
           </Link>
         </div>
       )}
 
-      <form onSubmit={submit} className="card" style={{ padding: 24, marginBottom: 20 }}>
+      <form onSubmit={submit} className="card" style={{ padding: 28, marginBottom: 28, border: "1px solid rgba(0,0,0,0.06)", boxShadow: "var(--shadow-sm)" }}>
         <div className="field">
-          <label>Nama</label>
+          <label>Nama Lengkap</label>
           <input
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
+            placeholder="Nama lengkap kamu"
           />
         </div>
 
@@ -93,11 +92,15 @@ export default function Profile() {
           <input
             value={form.phone}
             onChange={(e) => setForm({ ...form, phone: e.target.value })}
+            placeholder="Nomor HP aktif"
           />
         </div>
 
         {user.is_seller && (
           <>
+            <div style={{ margin: "24px 0 16px", height: "1px", background: "var(--line)" }} />
+            <h3 style={{ fontSize: "1.15rem", fontWeight: 700, marginBottom: 16, color: "var(--ink)" }}>Informasi Toko</h3>
+            
             <div className="field">
               <label>Nama Toko</label>
               <input
@@ -105,6 +108,7 @@ export default function Profile() {
                 onChange={(e) =>
                   setForm({ ...form, store_name: e.target.value })
                 }
+                placeholder="Nama toko kelapa Anda"
               />
             </div>
 
@@ -115,6 +119,7 @@ export default function Profile() {
                 onChange={(e) =>
                   setForm({ ...form, store_location: e.target.value })
                 }
+                placeholder="Kota atau kabupaten"
               />
             </div>
 
@@ -125,6 +130,7 @@ export default function Profile() {
                 onChange={(e) =>
                   setForm({ ...form, store_description: e.target.value })
                 }
+                placeholder="Jelaskan mengenai jenis limbah kelapa yang Anda sediakan..."
               />
             </div>
           </>
@@ -132,6 +138,7 @@ export default function Profile() {
 
         <button
           className="btn btn-primary btn-block"
+          style={{ padding: "14px 24px", marginTop: 8 }}
           type="submit"
           disabled={saving}
         >

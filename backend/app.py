@@ -113,6 +113,53 @@ def login():
     return jsonify({"token": token, "user": user.to_dict()})
 
 
+@app.post("/api/auth/google")
+def google_login():
+    import json
+    import urllib.request
+    import uuid
+    data = request.get_json(force=True)
+    credential = data.get("credential")
+    if not credential:
+        return jsonify({"error": "Google ID Token wajib disertakan"}), 400
+    try:
+        url = f"https://oauth2.googleapis.com/tokeninfo?id_token={credential}"
+        req = urllib.request.Request(url)
+        with urllib.request.urlopen(req) as response:
+            token_info = json.loads(response.read().decode("utf-8"))
+        aud = token_info.get("aud")
+        expected_aud = "476986015276-805dhprpatpn6o8ij3dejv6efusrcauv.apps.googleusercontent.com"
+        if aud != expected_aud:
+            return jsonify({"error": "Token tidak valid untuk client ID ini"}), 400
+        email = token_info.get("email")
+        if not email:
+            return jsonify({"error": "Email Google tidak ditemukan"}), 400
+        name = token_info.get("name", email.split("@")[0])
+        avatar_url = token_info.get("picture")
+        user = User.query.filter_by(email=email).first()
+        if not user:
+            user = User(
+                name=name,
+                email=email,
+                role="buyer",
+                avatar_url=avatar_url,
+                is_seller=False,
+                is_admin=False
+            )
+            user.set_password(str(uuid.uuid4()))
+            db.session.add(user)
+            db.session.commit()
+        else:
+            if avatar_url and not user.avatar_url:
+                user.avatar_url = avatar_url
+                db.session.commit()
+        token = create_access_token(identity=str(user.id))
+        return jsonify({"token": token, "user": user.to_dict()})
+    except Exception as e:
+        print("Google Auth Error:", e)
+        return jsonify({"error": "Gagal autentikasi via Google"}), 400
+
+
 @app.get("/api/auth/me")
 @jwt_required()
 def me():

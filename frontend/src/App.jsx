@@ -1,7 +1,7 @@
-﻿import React from "react";
+import React from "react";
 import { Routes, Route, useLocation } from "react-router-dom";
 import Navbar from "./components/Navbar.jsx";
-import BottomNav from "./components/BottomNav.jsx";
+import Footer from "./components/Footer.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import Home from "./pages/Home.jsx";
 import ProductList from "./pages/ProductList.jsx";
@@ -26,11 +26,13 @@ export default function App() {
   const location = useLocation();
   const isDashboard = location.pathname.startsWith("/dashboard");
   const isAdmin = location.pathname.startsWith("/admin");
+  const isAuth = location.pathname === "/masuk" || location.pathname === "/daftar";
+  const hideShell = isDashboard || isAdmin || isAuth;
 
   return (
     <>
-      {!isDashboard && !isAdmin && <Navbar />}
-      <div className={isDashboard || isAdmin ? "" : "app-content"}>
+      {!hideShell && <Navbar />}
+      <div className={hideShell ? "" : "app-content"}>
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/produk" element={<ProductList />} />
@@ -50,8 +52,8 @@ export default function App() {
         <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
         <Route path="*" element={<NotFound />} />
       </Routes>
+      {!hideShell && <Footer />}
       </div>
-      {!isAdmin && <BottomNav />}
     </>
   );
 }

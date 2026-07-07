@@ -49,8 +49,15 @@ export function AuthProvider({ children }) {
     return res.data;
   };
 
+  const loginWithGoogle = async (credential) => {
+    const res = await api.post("/auth/google", { credential });
+    localStorage.setItem("qlapa_token", res.data.token);
+    setUser(res.data.user);
+    return res.data.user;
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, refreshUser, openStore }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, refreshUser, openStore, loginWithGoogle }}>
       {children}
     </AuthContext.Provider>
   );
