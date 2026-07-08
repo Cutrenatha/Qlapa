@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { Store, Package, ShoppingBag, Star } from "lucide-react";
 import api from "../api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
@@ -83,7 +84,7 @@ function OpenStorePrompt() {
       };
 
       await openStore(data);
-      showToast("Toko berhasil dibuka! Selamat datang di dashboard tokomu 🎉");
+      showToast("Toko berhasil dibuka! Selamat datang di dashboard tokomu.");
     } catch (err) {
       setError(err.response?.data?.error || "Gagal membuka toko");
     } finally {
@@ -261,7 +262,7 @@ function StoreOverview({ data }) {
   return (
     <div style={styles.body}>
       <div style={styles.storeCard}>
-        <div style={styles.storeLogo}>🥥</div>
+        <div style={styles.storeLogo}><Store size={24} color="#5C381D" /></div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontWeight: 700, fontSize: "1.02rem" }}>
             {store.name}
@@ -370,7 +371,7 @@ function OrderRow({ order, last }) {
         borderBottom: last ? "none" : "1px solid var(--line)",
       }}
     >
-      <div style={styles.orderThumb}>🥥</div>
+      <div style={styles.orderThumb}><ShoppingBag size={20} color="#5C381D" /></div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: "0.78rem", color: "var(--ink-soft)" }}>
           {orderCode(order)}
@@ -479,7 +480,7 @@ function ProdukTab({ products, onDelete }) {
                   alt={p.name}
                 />
               ) : (
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", fontSize: "1.4rem" }}>🥥</div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}><Package size={24} color="#AEAEB2" /></div>
               )}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
