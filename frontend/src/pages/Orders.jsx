@@ -83,14 +83,14 @@ export default function Orders() {
                   <span
                     className="badge"
                     style={{
-                      background: o.payment_status === "paid" ? "rgba(52, 199, 89, 0.12)" : "rgba(255, 59, 48, 0.12)",
-                      color: o.payment_status === "paid" ? "#248a3d" : "#ff3b30",
+                      background: o.payment_status === "paid" ? "rgba(52, 199, 89, 0.12)" : (o.midtrans_tx_id && o.midtrans_tx_id.startsWith("COD") ? "rgba(245, 158, 11, 0.12)" : "rgba(255, 59, 48, 0.12)"),
+                      color: o.payment_status === "paid" ? "#248a3d" : (o.midtrans_tx_id && o.midtrans_tx_id.startsWith("COD") ? "#d97706" : "#ff3b30"),
                       border: "none",
                       fontSize: "0.78rem",
                       fontWeight: 600
                     }}
                   >
-                    {o.payment_status === "paid" ? "Sudah Dibayar" : "Belum Dibayar"}
+                    {o.payment_status === "paid" ? "Sudah Dibayar" : (o.midtrans_tx_id && o.midtrans_tx_id.startsWith("COD") ? "COD (Bayar di Tempat)" : "Belum Dibayar")}
                   </span>
                 </div>
                 <span className={`badge ${STATUS_COLOR[o.status]}`}>{STATUS_LABEL[o.status]}</span>

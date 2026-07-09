@@ -230,11 +230,21 @@ export default function ProductDetail() {
   };
 
   const handleAddToCart = () => {
+    if (!user) {
+      showToast("Silakan masuk terlebih dahulu untuk menambahkan ke keranjang", "error");
+      navigate("/masuk");
+      return;
+    }
     addItem(product, 1);
     showToast(`${product.name} ditambahkan ke keranjang`);
   };
 
   const handleBuyNow = () => {
+    if (!user) {
+      showToast("Silakan masuk terlebih dahulu untuk membeli", "error");
+      navigate("/masuk");
+      return;
+    }
     clearCart();
     addItem(product, 1);
     navigate("/checkout");

@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { useAdminAuth } from "../../context/AdminAuthContext.jsx";
+import { Eye, EyeOff, Shield } from "lucide-react";
+import "./Admin.css";
 
 export default function AdminLogin() {
   const { admin, login } = useAdminAuth();
@@ -9,6 +11,7 @@ export default function AdminLogin() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPass, setShowPass] = useState(false);
 
   if (admin) return <Navigate to="/admin" replace />;
 
@@ -20,112 +23,104 @@ export default function AdminLogin() {
       await login(email, password);
       navigate("/admin", { replace: true });
     } catch (err) {
-      setError(
-        err.response?.data?.error || err.message || "Gagal masuk sebagai admin"
-      );
+      setError(err.response?.data?.error || err.message || "Gagal masuk sebagai admin");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div style={styles.wrap}>
-      <div style={styles.card}>
-        <div style={styles.brand}>
-          <span style={styles.logoDot}>Q</span>
-          <div>
-            <div style={styles.brandName}>Qlapa Admin</div>
-            <div style={styles.brandSub}>Panel administrator</div>
+    <div className="admin-login-page">
+      {/* Background decorative blobs */}
+      <div className="admin-login-blob admin-login-blob--1" />
+      <div className="admin-login-blob admin-login-blob--2" />
+
+      <div className="admin-login-box">
+        {/* Header */}
+        <div className="admin-login-box-header">
+          <img
+            src="/assets/qlapa-logo.png"
+            alt="Qlapa"
+            className="admin-login-box-logo"
+          />
+          <div className="admin-login-box-badge">
+            <Shield size={13} strokeWidth={2} />
+            Admin Panel
           </div>
+          <h1 className="admin-login-box-title">Selamat Datang</h1>
+          <p className="admin-login-box-sub">
+            Masuk untuk mengelola platform Qlapa
+          </p>
         </div>
 
-        <form onSubmit={submit} style={{ marginTop: 24 }}>
-          <div className="field">
-            <label>Email Admin</label>
+        {/* Form */}
+        <form onSubmit={submit} className="admin-login-box-form">
+          <div className="admin-field">
+            <label className="admin-field-label" htmlFor="admin-email">
+              Email Admin
+            </label>
             <input
+              id="admin-email"
+              className="admin-field-input"
               type="email"
               required
               autoFocus
+              placeholder="admin@qlapa.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin@qlapa.com"
+              autoComplete="email"
             />
           </div>
-          <div className="field">
-            <label>Password</label>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-            />
+
+          <div className="admin-field">
+            <label className="admin-field-label" htmlFor="admin-password">
+              Password
+            </label>
+            <div className="admin-input-group">
+              <input
+                id="admin-password"
+                className="admin-field-input"
+                type={showPass ? "text" : "password"}
+                required
+                placeholder="Masukkan password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
+              />
+              <button
+                type="button"
+                className="admin-input-eye"
+                onClick={() => setShowPass(!showPass)}
+                tabIndex={-1}
+              >
+                {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
           </div>
+
           {error && (
-            <p className="field-error" style={{ marginBottom: 12 }}>
-              {error}
-            </p>
+            <div className="admin-error-banner">
+              <Shield size={14} /> {error}
+            </div>
           )}
+
           <button
-            className="btn btn-primary btn-block"
+            className="admin-login-submit"
             type="submit"
             disabled={loading}
           >
-            {loading ? "Memeriksa…" : "Masuk sebagai Admin"}
+            {loading ? (
+              <span className="admin-btn-spinner" />
+            ) : (
+              "Masuk ke Panel Admin"
+            )}
           </button>
         </form>
-        <p style={styles.footNote}>
-          Halaman ini khusus administrator Qlapa dan terpisah dari akun
-          pembeli/penjual.
+
+        <p className="admin-login-box-note">
+          Halaman ini hanya untuk administrator Qlapa dan terpisah dari akun pembeli/penjual.
         </p>
       </div>
     </div>
   );
 }
-
-const styles = {
-  wrap: {
-    minHeight: "100vh",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    background: "var(--green-900)",
-    padding: 20,
-  },
-  card: {
-    width: "100%",
-    maxWidth: 380,
-    background: "var(--paper)",
-    borderRadius: "var(--radius-lg)",
-    boxShadow: "var(--shadow-lg)",
-    padding: 32,
-  },
-  brand: { display: "flex", alignItems: "center", gap: 12 },
-  logoDot: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
-    background: "var(--green-700)",
-    color: "var(--cream)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontFamily: "var(--font-display)",
-    fontWeight: 700,
-    fontSize: "1.2rem",
-    flexShrink: 0,
-  },
-  brandName: {
-    fontFamily: "var(--font-display)",
-    fontWeight: 700,
-    fontSize: "1.15rem",
-    color: "var(--ink)",
-  },
-  brandSub: { fontSize: "0.8rem", color: "var(--ink-soft)" },
-  footNote: {
-    fontSize: "0.75rem",
-    color: "var(--ink-soft)",
-    marginTop: 18,
-    textAlign: "center",
-  },
-};

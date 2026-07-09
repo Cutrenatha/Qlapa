@@ -249,7 +249,9 @@ export default function Home() {
                     {p.image_url ? (
                       <img src={p.image_url} alt={p.name} className="fw-card-img" />
                     ) : (
-                      <div className="fw-card-img fw-card-placeholder">🥥</div>
+                      <div className="fw-card-img fw-card-placeholder" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ink-soft)' }}>
+                        <Package size={24} />
+                      </div>
                     )}
                     <div className="fw-badge">
                       {p.category}

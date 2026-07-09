@@ -116,7 +116,12 @@ export default function Navbar() {
           )}
 
           {/* Icon Chat (Desktop Only) */}
-          <Link to="/chat" className="navbar-icon-link desktop-only" title="Obrolan" onClick={closeAllMenus}>
+          <Link
+            to={user ? "/chat" : "/masuk"}
+            className="navbar-icon-link desktop-only"
+            title="Obrolan"
+            onClick={closeAllMenus}
+          >
             <MessageSquare size={20} />
           </Link>
 
@@ -179,11 +184,16 @@ export default function Navbar() {
                 </div>
               )}
             </div>
-          ) : (
-            /* Icon Keranjang (Buyer Mode) */
+          ) : user ? (
+            /* Icon Keranjang (Buyer Mode, hanya jika login) */
             <Link to="/keranjang" className="navbar-icon-link cart-icon-link" title="Keranjang" onClick={closeAllMenus}>
               <ShoppingCart size={20} />
               {count > 0 && <span className="navbar-cart-badge">{count}</span>}
+            </Link>
+          ) : (
+            /* Belum login: klik keranjang → redirect ke login */
+            <Link to="/masuk" className="navbar-icon-link cart-icon-link" title="Masuk untuk melihat keranjang" onClick={closeAllMenus}>
+              <ShoppingCart size={20} />
             </Link>
           )}
 

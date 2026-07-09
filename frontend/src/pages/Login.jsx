@@ -50,15 +50,25 @@ export default function Login() {
 
   return (
     <div className="auth-page">
-      <div className="auth-panel auth-panel--image" style={{ backgroundImage: "url('/assets/klapa.png')" }}>
+      <div
+        className="auth-panel auth-panel--image"
+        style={{ backgroundImage: "url('/assets/klapa.png')" }}
+      >
         <div className="auth-panel-overlay" />
         <div className="auth-panel-content">
           <div className="auth-panel-logo">
-            <img src="/assets/qlapa-logo.png" alt="Qlapa" className="auth-logo-img" />
+            <img
+              src="/assets/qlapa-logo.png"
+              alt="Qlapa"
+              className="auth-logo-img"
+            />
           </div>
           <div className="auth-panel-tagline">
             <h2>Kelapa menyimpan banyak potensi.</h2>
-            <p>Temukan limbah kelapa berkualitas dari petani lokal dan ciptakan nilai bersama.</p>
+            <p>
+              Temukan limbah kelapa berkualitas dari petani lokal dan ciptakan
+              nilai bersama.
+            </p>
           </div>
           <div className="auth-panel-dots">
             <span className="auth-dot auth-dot--active" />
@@ -75,13 +85,17 @@ export default function Login() {
             <h1 className="auth-form-title">Masuk ke Qlapa</h1>
             <p className="auth-form-sub">
               Belum punya akun?{" "}
-              <Link to="/daftar" className="auth-link">Daftar sekarang</Link>
+              <Link to="/daftar" className="auth-link">
+                Daftar sekarang
+              </Link>
             </p>
           </div>
 
           <form onSubmit={submit} className="auth-form">
             <div className="auth-field">
-              <label className="auth-label" htmlFor="login-email">Email</label>
+              <label className="auth-label" htmlFor="login-email">
+                Email
+              </label>
               <input
                 id="login-email"
                 className="auth-input"
@@ -95,7 +109,9 @@ export default function Login() {
             </div>
 
             <div className="auth-field">
-              <label className="auth-label" htmlFor="login-password">Password</label>
+              <label className="auth-label" htmlFor="login-password">
+                Password
+              </label>
               <div className="auth-input-wrapper">
                 <input
                   id="login-password"
@@ -104,7 +120,9 @@ export default function Login() {
                   required
                   placeholder="Masukkan password"
                   value={form.password}
-                  onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  onChange={(e) =>
+                    setForm({ ...form, password: e.target.value })
+                  }
                   autoComplete="current-password"
                 />
                 <button
@@ -120,19 +138,55 @@ export default function Login() {
 
             {error && <p className="auth-error">{error}</p>}
 
-            <button className="auth-submit-btn" type="submit" disabled={loading}>
-              {loading ? <span className="auth-spinner" /> : <><span>Masuk</span><ArrowRight size={17} /></>}
+            <button
+              className="auth-submit-btn"
+              type="submit"
+              disabled={loading}
+            >
+              {loading ? (
+                <span className="auth-spinner" />
+              ) : (
+                <>
+                  <span>Masuk</span>
+                  <ArrowRight size={17} />
+                </>
+              )}
             </button>
           </form>
 
-          <div className="auth-divider" style={{ display: "flex", alignItems: "center", textTransform: "uppercase", fontSize: "0.72rem", fontWeight: "700", color: "var(--ink-soft)", margin: "8px 0" }}>
-            <div style={{ flex: 1, height: "1px", background: "var(--line)" }} />
-            <span style={{ padding: "0 16px", letterSpacing: "0.05em" }}>atau</span>
-            <div style={{ flex: 1, height: "1px", background: "var(--line)" }} />
+          <div
+            className="auth-divider"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              textTransform: "uppercase",
+              fontSize: "0.72rem",
+              fontWeight: "700",
+              color: "var(--ink-soft)",
+              margin: "8px 0",
+            }}
+          >
+            <div
+              style={{ flex: 1, height: "1px", background: "var(--line)" }}
+            />
+            <span style={{ padding: "0 16px", letterSpacing: "0.05em" }}>
+              atau
+            </span>
+            <div
+              style={{ flex: 1, height: "1px", background: "var(--line)" }}
+            />
           </div>
 
           {/* Google Sign-In Button */}
-          <div className="auth-google-container" style={{ display: "flex", justifyContent: "center", width: "100%", overflow: "hidden" }}>
+          <div
+            className="auth-google-container"
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              width: "100%",
+              overflow: "hidden",
+            }}
+          >
             <GoogleLogin
               onSuccess={handleGoogleSuccess}
               onError={handleGoogleError}
@@ -142,12 +196,6 @@ export default function Login() {
               shape="pill"
               text="signin_with"
             />
-          </div>
-
-          <div className="auth-demo-hint">
-            <p className="auth-demo-label">Akun demo</p>
-            <p>seller@qlapa.test / password123</p>
-            <p>buyer@qlapa.test / password123</p>
           </div>
         </div>
       </div>

@@ -520,6 +520,7 @@ def create_order():
 
     shipping_method = data.get("shipping_method", "kirim")
     shipping_address = data.get("shipping_address", "")
+    payment_method = data.get("payment_method", "midtrans")
 
     grouped = {}
     for it in items:
@@ -531,7 +532,10 @@ def create_order():
         grouped.setdefault(product.seller_id, []).append((product, it["qty"]))
 
     import time
-    midtrans_tx_id = f"QLAPA-TX-{int(time.time() * 1000)}-{user.id}"
+    if payment_method == "cod":
+        midtrans_tx_id = f"COD-{int(time.time() * 1000)}-{user.id}"
+    else:
+        midtrans_tx_id = f"QLAPA-TX-{int(time.time() * 1000)}-{user.id}"
 
     created_orders = []
     combined_total = 0
@@ -602,6 +606,15 @@ def create_order():
             "phone": user.phone or ""
         }
     }
+
+    if payment_method == "cod":
+        for order in created_orders:
+            order.snap_token = "COD"
+        db.session.commit()
+        return jsonify({
+            "snap_token": "COD",
+            "orders": [o.serialize() for o in created_orders]
+        }), 201
 
     try:
         transaction = midtrans_snap.create_transaction(snap_param)

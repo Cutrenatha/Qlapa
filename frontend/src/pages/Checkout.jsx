@@ -7,12 +7,15 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { MapPin, Truck, Store, ShieldCheck, Info, Plus, Minus, Trash2 } from "lucide-react";
 
 export default function Checkout() {
-  const { items, total, updateQty, removeItem, clearCart } = useCart();
+  const { items, total, updateQty, removeItem, clearSelected } = useCart();
   const { showToast } = useToast();
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
+  const selectedItems = items.filter(i => i.selected);
+
   const [shippingMethod, setShippingMethod] = useState("kirim"); // "kirim" | "pickup"
+  const [paymentMethod, setPaymentMethod] = useState("midtrans"); // "midtrans" | "cod"
   const [loading, setLoading] = useState(false);
 
   // Redirect if not logged in
@@ -50,7 +53,7 @@ export default function Checkout() {
     return null;
   }
 
-  if (items.length === 0) {
+  if (selectedItems.length === 0) {
     return (
       <div className="section container" style={{ maxWidth: 640, minHeight: '70vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
         <div className="card" style={{ padding: 40, textAlign: 'center', borderRadius: 20 }}>
@@ -70,7 +73,7 @@ export default function Checkout() {
   const adminFee = Math.round(subtotal * 0.10);
   
   // Calculate unique sellers
-  const uniqueSellerIds = new Set(items.map(item => item.product.seller_id));
+  const uniqueSellerIds = new Set(selectedItems.map(item => item.product.seller_id));
   const numSellers = uniqueSellerIds.size;
   const shippingCost = shippingMethod === "kirim" ? 10000 * numSellers : 0;
   const grandTotal = subtotal + adminFee + shippingCost;
@@ -106,12 +109,20 @@ export default function Checkout() {
     try {
       // 1. Post to backend to create orders and get snap_token
       const res = await api.post("/orders", {
-        items: items.map((i) => ({ product_id: i.product.id, qty: i.qty })),
+        items: selectedItems.map((i) => ({ product_id: i.product.id, qty: i.qty })),
         shipping_address: shippingMethod === "kirim" ? user.address : "Ambil Sendiri (Pick Up)",
         shipping_method: shippingMethod,
+        payment_method: paymentMethod,
       });
 
       const { snap_token } = res.data;
+
+      if (paymentMethod === "cod") {
+        clearSelected();
+        showToast("Pesanan dengan metode COD berhasil dibuat!");
+        navigate("/pesanan");
+        return;
+      }
 
       if (!snap_token) {
         throw new Error("Gagal memperoleh Snap Token dari Midtrans");
@@ -126,7 +137,7 @@ export default function Checkout() {
             } catch (err) {
               console.error("Fallback pay-success error:", err);
             }
-            clearCart();
+            clearSelected();
             showToast("Pembayaran berhasil! Dana escrow ditahan aman.");
             navigate("/pesanan");
           },
@@ -136,7 +147,7 @@ export default function Checkout() {
             } catch (err) {
               console.error("Fallback pay-success error:", err);
             }
-            clearCart();
+            clearSelected();
             showToast("Pembayaran pending. Selesaikan proses pembayaran Anda.");
             navigate("/pesanan");
           },
@@ -171,7 +182,7 @@ export default function Checkout() {
             <h3 style={{ fontSize: "1.1rem", fontWeight: 700, marginBottom: 16, color: "var(--ink)" }}>Produk yang Dicheckout</h3>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {items.map((item) => (
+              {selectedItems.map((item) => (
                 <div 
                   key={item.product.id} 
                   style={{ 
@@ -307,6 +318,55 @@ export default function Checkout() {
                 </div>
                 <span style={{ fontSize: "0.82rem", color: "var(--ink-soft)" }}>
                   Gratis / Tanpa Ongkir
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Opsi Pembayaran */}
+          <div className="card" style={{ padding: 24, border: "1px solid rgba(0,0,0,0.06)", boxShadow: "var(--shadow-sm)", borderRadius: "16px" }}>
+            <h3 style={{ fontSize: "1.1rem", fontWeight: 700, marginBottom: 16, color: "var(--ink)" }}>Metode Pembayaran</h3>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+              
+              {/* Opsi Transfer Bank */}
+              <div
+                onClick={() => setPaymentMethod("midtrans")}
+                style={{
+                  padding: "16px",
+                  borderRadius: "12px",
+                  border: `2px solid ${paymentMethod === "midtrans" ? "var(--brand)" : "rgba(0,0,0,0.06)"}`,
+                  background: paymentMethod === "midtrans" ? "rgba(92, 61, 46, 0.04)" : "#fff",
+                  cursor: "pointer",
+                  transition: "all 0.2s"
+                }}
+              >
+                <div className="row gap-8" style={{ alignItems: "center", marginBottom: 6 }}>
+                  <ShieldCheck size={18} color={paymentMethod === "midtrans" ? "var(--brand)" : "var(--ink-soft)"} />
+                  <strong style={{ fontSize: "0.92rem", color: "var(--ink)" }}>Transfer / Gopay</strong>
+                </div>
+                <span style={{ fontSize: "0.82rem", color: "var(--ink-soft)" }}>
+                  Pembayaran Online (Midtrans)
+                </span>
+              </div>
+
+              {/* Opsi COD */}
+              <div
+                onClick={() => setPaymentMethod("cod")}
+                style={{
+                  padding: "16px",
+                  borderRadius: "12px",
+                  border: `2px solid ${paymentMethod === "cod" ? "var(--brand)" : "rgba(0,0,0,0.06)"}`,
+                  background: paymentMethod === "cod" ? "rgba(92, 61, 46, 0.04)" : "#fff",
+                  cursor: "pointer",
+                  transition: "all 0.2s"
+                }}
+              >
+                <div className="row gap-8" style={{ alignItems: "center", marginBottom: 6 }}>
+                  <Truck size={18} color={paymentMethod === "cod" ? "var(--brand)" : "var(--ink-soft)"} />
+                  <strong style={{ fontSize: "0.92rem", color: "var(--ink)" }}>Bayar di Tempat (COD)</strong>
+                </div>
+                <span style={{ fontSize: "0.82rem", color: "var(--ink-soft)" }}>
+                  Bayar tunai saat barang tiba
                 </span>
               </div>
             </div>

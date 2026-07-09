@@ -1,0 +1,451 @@
+/* ============================================================
+   PROFILE PAGE (Web App Style)
+   ============================================================ */
+
+.profile-page {
+  padding: 40px 40px 80px 40px;
+  max-width: 1600px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.profile-header {
+  margin-bottom: 36px;
+}
+
+.profile-title {
+  font-family: var(--font-display);
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0 0 8px 0;
+}
+
+.profile-subtitle {
+  font-size: 0.95rem;
+  color: var(--ink-soft);
+  margin: 0;
+}
+
+/* ── Layout ── */
+.profile-layout {
+  display: flex;
+  align-items: flex-start;
+  gap: 40px;
+}
+
+.profile-sidebar {
+  width: 260px;
+  flex-shrink: 0;
+}
+
+.profile-content {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── Sidebar Navigation ── */
+.profile-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 24px;
+}
+
+.profile-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 16px;
+  border: none;
+  background: transparent;
+  border-radius: 10px;
+  color: var(--ink-soft);
+  font-size: 0.92rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.profile-nav-item:hover {
+  background: var(--cream-2);
+  color: var(--ink);
+}
+
+.profile-nav-item.active {
+  background: var(--cream-3);
+  color: var(--green-700);
+}
+
+.profile-nav-item.active svg {
+  color: var(--green-700);
+}
+
+.profile-nav-item svg {
+  color: #A8A29E;
+  transition: color 0.2s ease;
+}
+
+/* ── Promo Card ── */
+.profile-promo-card {
+  background: linear-gradient(145deg, #FDFBF7, #F5F0E6);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  text-align: left;
+}
+
+.profile-promo-icon {
+  color: var(--green-600);
+  margin-bottom: 12px;
+}
+
+.profile-promo-card strong {
+  display: block;
+  font-size: 0.95rem;
+  color: var(--ink);
+  margin-bottom: 6px;
+}
+
+.profile-promo-card p {
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+  line-height: 1.5;
+  margin: 0 0 16px 0;
+}
+
+.profile-promo-btn {
+  width: 100%;
+  padding: 8px;
+  font-size: 0.85rem;
+}
+
+/* ── Content Panel ── */
+.profile-panel {
+  background: #FFFFFF;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.03);
+  animation: profileFadeIn 0.3s ease both;
+}
+
+@keyframes profileFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.profile-panel-header {
+  padding: 24px 32px;
+  border-bottom: 1px solid var(--border);
+  background: #FCFAf8;
+}
+
+.profile-panel-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0 0 4px 0;
+}
+
+.profile-panel-desc {
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  margin: 0;
+}
+
+.profile-panel-body {
+  padding: 32px;
+}
+
+/* ── Avatar Uploader ── */
+.profile-avatar-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 28px;
+  margin-bottom: 28px;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.profile-avatar-uploader {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.profile-avatar-circle {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: var(--cream-2);
+  border: 2px solid #FFFFFF;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.profile-avatar-circle img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-avatar-placeholder {
+  color: #A8A29E;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  background: #F5F0E6;
+}
+
+.profile-avatar-edit-btn {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 24px;
+  background: rgba(0,0,0,0.6);
+  color: #FFF;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.profile-avatar-circle:hover .profile-avatar-edit-btn {
+  opacity: 1;
+}
+
+.profile-avatar-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.profile-avatar-info strong {
+  font-size: 0.95rem;
+  color: var(--ink);
+}
+
+.profile-avatar-info span {
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+
+.profile-uploading-text {
+  font-size: 0.8rem;
+  color: var(--green-600) !important;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+/* User Badge */
+.profile-user-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.profile-email {
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+  font-weight: 500;
+}
+
+/* ── Form Styling ── */
+.profile-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.profile-form-narrow {
+  max-width: 480px;
+}
+
+.profile-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.profile-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.profile-field label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.profile-field input,
+.profile-field textarea {
+  padding: 12px 14px;
+  border: 1.5px solid rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+  font-size: 0.92rem;
+  font-family: inherit;
+  color: var(--ink);
+  background: #FFFFFF;
+  transition: all 0.2s;
+}
+
+.profile-field input:focus,
+.profile-field textarea:focus {
+  border-color: var(--green-500);
+  box-shadow: 0 0 0 3px rgba(34,197,94,0.1);
+  outline: none;
+}
+
+.profile-field textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+/* Address Autocomplete */
+.profile-address-field {
+  position: relative;
+}
+
+.profile-address-loading {
+  position: absolute;
+  right: 12px;
+  top: 38px;
+  font-size: 0.75rem;
+  color: var(--ink-soft);
+  background: #FFF;
+  padding: 2px 4px;
+}
+
+.profile-address-suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #FFF;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  margin: 4px 0 0 0;
+  padding: 4px 0;
+  list-style: none;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 50;
+}
+
+.profile-address-suggestions li {
+  padding: 10px 14px;
+  font-size: 0.85rem;
+  color: var(--ink);
+  cursor: pointer;
+  border-bottom: 1px solid var(--border-light);
+  transition: background 0.15s;
+}
+
+.profile-address-suggestions li:last-child {
+  border-bottom: none;
+}
+
+.profile-address-suggestions li:hover {
+  background: var(--cream-2);
+}
+
+/* ── Actions ── */
+.profile-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+}
+
+.profile-form-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 12px 24px;
+  border-radius: 8px;
+}
+
+/* ── Alerts ── */
+.profile-error-alert {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: #FEF2F2;
+  border: 1px solid #FECACA;
+  color: #DC2626;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  margin-top: 8px;
+}
+
+/* ── Responsive ── */
+@media (max-width: 860px) {
+  .profile-layout {
+    flex-direction: column;
+    gap: 24px;
+  }
+  
+  .profile-sidebar {
+    width: 100%;
+  }
+
+  .profile-nav {
+    flex-direction: row;
+    overflow-x: auto;
+    padding-bottom: 8px;
+  }
+  
+  .profile-nav-item {
+    white-space: nowrap;
+    width: auto;
+  }
+  
+  .profile-promo-card {
+    display: none;
+  }
+}
+
+@media (max-width: 600px) {
+  .profile-form-row {
+    grid-template-columns: 1fr;
+  }
+  
+  .profile-panel-header,
+  .profile-panel-body {
+    padding: 20px;
+  }
+  
+  .profile-avatar-section {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .profile-user-badge {
+    align-items: flex-start;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+}

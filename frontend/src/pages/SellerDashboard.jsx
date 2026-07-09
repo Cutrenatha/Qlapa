@@ -1,74 +1,93 @@
-import React, { useEffect, useState } from "react";
-import { Link, useSearchParams, Navigate } from "react-router-dom";
+import React, { useEffect, useState, useRef } from "react";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import {
-  Store, Package, ShoppingBag, TrendingUp, Bell, Plus,
+  Store, Package, ShoppingBag, TrendingUp, Plus,
   Edit2, Trash2, Check, X, Truck, Clock, CheckCircle2,
   XCircle, MapPin, Calendar, ArrowRight, ChevronRight,
-  BarChart2, Star, AlertCircle, Tag, Layers
+  BarChart2, Star, Tag, Info, List
 } from "lucide-react";
 import api from "../api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
+import "./SellerDashboard.css";
 
 /* ── Constants ── */
 const STATUS_META = {
   menunggu_konfirmasi: {
     label: "Menunggu",
     bg: "#FEF3C7",
-    fg: "#92400E",
+    fg: "#B45309",
     Icon: Clock,
   },
-  diproses: { label: "Dikemas", bg: "#D1FAE5", fg: "#065F46", Icon: Package },
-  dikirim: { label: "Dikirim", bg: "#EDE9FE", fg: "#4C1D95", Icon: Truck },
-  selesai: { label: "Selesai", bg: "#D1FAE5", fg: "#065F46", Icon: CheckCircle2 },
-  ditolak: { label: "Ditolak", bg: "#FEE2E2", fg: "#991B1B", Icon: XCircle },
+  diproses: {
+    label: "Dikemas",
+    bg: "#E0E7FF",
+    fg: "#4338CA",
+    Icon: Package,
+  },
+  dikirim: {
+    label: "Dikirim",
+    bg: "#EDE9FE",
+    fg: "#6D28D9",
+    Icon: Truck,
+  },
+  selesai: {
+    label: "Selesai",
+    bg: "#D1FAE5",
+    fg: "#065F46",
+    Icon: CheckCircle2,
+  },
+  ditolak: {
+    label: "Ditolak",
+    bg: "#FEE2E2",
+    fg: "#991B1B",
+    Icon: XCircle,
+  },
 };
 
-const MONTHS = ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"];
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
 
 function formatJoined(iso) {
   if (!iso) return "";
   const d = new Date(iso);
   return `${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
 }
+
 function formatOrderDate(iso) {
   const d = new Date(iso);
-  return `${String(d.getDate()).padStart(2,"0")} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+  return `${String(d.getDate()).padStart(2, "0")} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
 }
+
 function orderCode(o) {
   const d = new Date(o.created_at);
-  const dd = String(d.getDate()).padStart(2,"0");
-  const mm = String(d.getMonth()+1).padStart(2,"0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
   const yy = String(d.getFullYear()).slice(2);
-  return `ORD-${dd}${mm}${yy}-${String(o.id).padStart(3,"0")}`;
+  return `ORD-${dd}${mm}${yy}-${String(o.id).padStart(3, "0")}`;
 }
+
 function formatRp(val) {
   if (!val) return "Rp 0";
-  if (val >= 1_000_000) return `Rp ${(val/1_000_000).toFixed(1)} jt`;
-  if (val >= 1_000) return `Rp ${Math.round(val/1_000)} rb`;
+  if (val >= 1_000_000) return `Rp ${(val / 1_000_000).toFixed(1)} jt`;
+  if (val >= 1_000) return `Rp ${Math.round(val / 1_000)} rb`;
   return `Rp ${val}`;
 }
 
-/* ── Root ── */
-export default function SellerDashboard() {
-  return <DashboardShell />;
-}
-
-/* ── Shell ── */
-/* ── Template/mock data for empty state ── */
+/* ── Mock Data matching screenshot exactly ── */
 const MOCK_DATA = {
   store: {
     name: "Toko Saya",
     location: "Banda Aceh, Aceh",
-    description: "Supplier limbah kelapa berkualitas — tempurung, sabut, dan ampas kelapa siap kirim.",
-    joined_at: new Date().toISOString(),
+    description: "Menyediakan berbagai limbah kelapa berkualitas untuk kebutuhan industri dan kerajinan.",
+    joined_at: "2026-07-01T00:00:00Z",
     rating: 4.8,
     review_count: 12,
+    categories: "Tempurung, Sabut, Ampas Kelapa",
   },
   summary: {
     pesanan_baru: 3,
     produk_terjual: 48,
-    pendapatan: 2_450_000,
+    pendapatan: 2500000,
     tingkat_respons: 96,
   },
   products: [
@@ -94,7 +113,7 @@ const MOCK_DATA = {
     },
     {
       id: 100,
-      status: "dikirim",
+      status: "diproses", // Dikemas
       payment_status: "paid",
       buyer_name: "Siti Rahmah",
       shipping_address: "Jl. Sudirman No. 45, Lhokseumawe",
@@ -110,341 +129,364 @@ const MOCK_DATA = {
       id: 99,
       status: "selesai",
       payment_status: "paid",
-      buyer_name: "Ahmad Fauzi",
-      shipping_address: "Jl. Merdeka No. 7, Sabang",
+      buyer_name: "CV. Agro Nusantara",
+      shipping_address: "Kawasan Industri Krueng Mane, Aceh Utara",
       created_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-      total: 480000,
-      admin_fee: 48000,
+      total: 1250000,
+      admin_fee: 125000,
       shipping_cost: 30000,
       items: [
-        { id: 4, product_name: "Tempurung Kelapa Kering", qty: 25, subtotal: 375000 },
-        { id: 5, product_name: "Sabut Kelapa Olahan", qty: 3, subtotal: 24000 },
+        { id: 4, product_name: "Tempurung Kelapa Kering", qty: 70, subtotal: 1050000 },
+        { id: 5, product_name: "Sabut Kelapa Olahan", qty: 20, subtotal: 160000 },
       ],
     },
   ],
 };
 
+/* ── Root ── */
+export default function SellerDashboard() {
+  return <DashboardShell />;
+}
+
+/* ── Shell ── */
 function DashboardShell() {
   const [params] = useSearchParams();
   const tab = params.get("tab") || "beranda";
   const { showToast } = useToast();
   const { user } = useAuth();
+  const navigate = useNavigate();
 
-  const mergeWithMock = (apiData) => ({
-    store: {
-      ...MOCK_DATA.store,
-      ...(apiData?.store || {}),
-      name: apiData?.store?.name || user?.store_name || MOCK_DATA.store.name,
-      location: apiData?.store?.location || user?.store_location || MOCK_DATA.store.location,
-      description: apiData?.store?.description || user?.store_description || MOCK_DATA.store.description,
-    },
-    summary: { ...MOCK_DATA.summary, ...(apiData?.summary || {}) },
-    products: (apiData?.products?.length > 0) ? apiData.products : MOCK_DATA.products,
-    orders:   (apiData?.orders?.length   > 0) ? apiData.orders   : MOCK_DATA.orders,
-  });
-
-  /* Force static mock data so Beranda is never empty */
+  // Start with MOCK_DATA so the page NEVER renders blank
   const [data, setData] = useState(MOCK_DATA);
+  const [loading, setLoading] = useState(false);
+  const [apiError, setApiError] = useState(null);
+  const mountedRef = useRef(true);
 
-  const load = () => {
-    // Statis: always use mock data directly
-    setData(MOCK_DATA);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+
+  const load = async () => {
+    if (!mountedRef.current) return;
+    setLoading(true);
+    setApiError(null);
+    try {
+      const res = await api.get("/seller/dashboard");
+      if (!mountedRef.current) return;
+      const apiData = res.data;
+      setData({
+        store: {
+          ...MOCK_DATA.store,
+          ...apiData.store,
+          name: apiData.store?.name || user?.store_name || MOCK_DATA.store.name,
+          location: apiData.store?.location || user?.store_location || MOCK_DATA.store.location,
+          description: apiData.store?.description || user?.store_description || MOCK_DATA.store.description,
+          categories: apiData.store?.categories || MOCK_DATA.store.categories,
+        },
+        summary: {
+          ...MOCK_DATA.summary,
+          ...(apiData.summary || {}),
+        },
+        products: Array.isArray(apiData.products) ? apiData.products : [],
+        orders: Array.isArray(apiData.orders) ? apiData.orders : [],
+      });
+    } catch (err) {
+      if (!mountedRef.current) return;
+      const status = err?.response?.status;
+      if (status === 403) {
+        // User hasn't opened a store yet
+        setApiError("not_seller");
+      } else if (status === 401) {
+        // Token expired or invalid
+        navigate("/masuk");
+        return;
+      } else {
+        // Network error / backend down — keep showing MOCK_DATA
+        console.warn("Dashboard API tidak tersedia, menggunakan data simulasi.", err);
+      }
+    } finally {
+      if (mountedRef.current) setLoading(false);
+    }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const deleteProduct = async (id) => {
     if (!window.confirm("Hapus produk ini?")) return;
-    await api.delete(`/products/${id}`);
-    showToast("Produk dihapus.");
-    load();
+    try {
+      await api.delete(`/products/${id}`);
+      showToast("Produk dihapus.");
+      load();
+    } catch (err) {
+      showToast("Gagal menghapus produk.", "error");
+    }
   };
 
   const updateOrderStatus = async (id, status) => {
-    await api.put(`/orders/${id}/status`, { status });
-    showToast("Status pesanan diperbarui.");
-    load();
+    try {
+      await api.put(`/orders/${id}/status`, { status });
+      showToast("Status pesanan diperbarui.");
+      load();
+    } catch (err) {
+      showToast("Gagal memperbarui status pesanan.", "error");
+    }
   };
 
+  // Not a seller — show friendly prompt to open a store
+  if (apiError === "not_seller") {
+    return (
+      <div className="dashboard-shell">
+        <div className="dashboard-empty-state" style={{ marginTop: 40 }}>
+          <Store size={48} color="var(--brown-300)" strokeWidth={1.3} />
+          <h3 className="dashboard-empty-title">Toko Anda Belum Dibuka</h3>
+          <p className="dashboard-empty-sub">
+            Buka toko Anda untuk mulai berjualan produk limbah kelapa dan kelola pesanan dari satu tempat.
+          </p>
+          <Link to="/toko/buka" className="dashboard-action-btn">
+            <Plus size={15} strokeWidth={2.5} />
+            Buka Toko Sekarang
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div style={s.shell}>
+    <div className="dashboard-shell">
       {/* Top bar */}
-      <div style={s.topBar}>
+      <div className="dashboard-topbar">
         <div>
-          <h1 style={s.topBarTitle}>
-            {(tab === "beranda" || tab === "toko") && (data.store.name)}
+          <h1 className="dashboard-title">
+            {(tab === "beranda" || tab === "toko") && (data.store?.name || "Toko Saya")}
             {tab === "produk"  && "Produk Saya"}
             {tab === "pesanan" && "Pemesanan"}
           </h1>
-          <p style={s.topBarSub}>
-            {(tab === "beranda" || tab === "toko") && `Bergabung ${formatJoined(data.store.joined_at)} · Toko Aktif`}
-            {tab === "produk"  && `${data.products.length} produk terdaftar`}
-            {tab === "pesanan" && `${data.orders.length} total pesanan`}
+          <p className="dashboard-subtitle">
+            {(tab === "beranda" || tab === "toko") && (
+              loading
+                ? "Memuat data..."
+                : `Bergabung ${formatJoined(data.store?.joined_at)} · Toko Aktif`
+            )}
+            {tab === "produk"  && `${(data.products || []).length} produk terdaftar`}
+            {tab === "pesanan" && `${(data.orders || []).length} total pesanan`}
           </p>
         </div>
 
         {/* Action button (produk tab only) */}
         {tab === "produk" && (
-          <Link to="/dashboard/tambah-produk" style={s.actionBtn}>
-            <Plus size={16} strokeWidth={2} />
+          <Link to="/dashboard/tambah-produk" className="dashboard-action-btn">
+            <Plus size={16} strokeWidth={2.5} />
             Tambah Produk
           </Link>
         )}
       </div>
 
-      {/* Content — always rendered, data is never null */}
-      <div style={s.content}>
-        {(tab === "beranda" || tab === "toko") && <BerandaTab data={data} onUpdateStatus={updateOrderStatus} />}
-        {tab === "produk"  && <ProdukTab  products={data.products} onDelete={deleteProduct} />}
-        {tab === "pesanan" && <PesananTab orders={data.orders}    onUpdateStatus={updateOrderStatus} />}
+      {/* Subtle loading bar at top when refreshing */}
+      {loading && (
+        <div style={{
+          height: 3,
+          background: "linear-gradient(90deg, var(--brown-300), var(--brown-700))",
+          borderRadius: 99,
+          marginBottom: 20,
+          animation: "pulse 1.5s ease-in-out infinite",
+        }} />
+      )}
+
+      {/* Content */}
+      <div className="dashboard-content">
+        {(tab === "beranda" || tab === "toko") && <BerandaTab data={data} />}
+        {tab === "produk"  && <ProdukTab products={data.products || []} onDelete={deleteProduct} />}
+        {tab === "pesanan" && <PesananTab orders={data.orders || []} onUpdateStatus={updateOrderStatus} />}
       </div>
     </div>
   );
 }
 
 /* ── Beranda Tab ── */
-function BerandaTab({ data, onUpdateStatus }) {
+function BerandaTab({ data }) {
   const { store, summary, orders } = data;
   const pendingOrders = orders.filter((o) => o.status === "menunggu_konfirmasi");
-  const products = data.products || [];
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
 
-      {/* ── Alert pesanan pending ── */}
+      {/* Alert pesanan pending */}
       {pendingOrders.length > 0 && (
-        <div style={s.alertCard}>
-          <AlertCircle size={18} color="#92400E" strokeWidth={1.8} />
-          <div style={{ flex: 1 }}>
-            <p style={s.alertTitle}>
+        <div className="dashboard-alert-card">
+          <div className="dashboard-alert-icon-wrap">
+            <Info size={18} strokeWidth={2.5} />
+          </div>
+          <div className="dashboard-alert-content">
+            <p className="dashboard-alert-title">
               {pendingOrders.length} pesanan menunggu konfirmasi Anda
             </p>
-            <p style={s.alertSub}>
+            <p className="dashboard-alert-sub">
               Pembeli sedang menunggu. Segera proses agar reputasi toko terjaga.
             </p>
           </div>
-          <Link to="/dashboard?tab=pesanan" style={s.alertLink}>
+          <Link to="/dashboard?tab=pesanan" className="dashboard-alert-link">
             Proses Sekarang <ArrowRight size={14} />
           </Link>
         </div>
       )}
 
-      {/* ── 4 Stat cards ── */}
-      <div style={s.statsGrid}>
+      {/* 4 Stat cards */}
+      <div className="dashboard-stats-grid">
         {[
           {
             Icon: ShoppingBag,
             label: "Pesanan Baru",
             value: summary.pesanan_baru,
             sub: "butuh konfirmasi",
-            color: "#92400E", bg: "#FEF3C7", accent: "#F59E0B",
+            targetTab: "pesanan",
           },
           {
             Icon: Package,
             label: "Produk Terjual",
             value: summary.produk_terjual,
             sub: "total unit terjual",
-            color: "#065F46", bg: "#D1FAE5", accent: "#10B981",
+            targetTab: "produk",
           },
           {
             Icon: TrendingUp,
             label: "Pendapatan",
             value: formatRp(summary.pendapatan),
             sub: "estimasi bersih",
-            color: "#1E3A5F", bg: "#DBEAFE", accent: "#3B82F6",
+            targetTab: "beranda",
           },
           {
             Icon: BarChart2,
             label: "Tingkat Respons",
             value: `${summary.tingkat_respons}%`,
-            sub: "dari total pesanan",
-            color: "#4C1D95", bg: "#EDE9FE", accent: "#8B5CF6",
+            sub: "dari total pesanan masuk",
+            targetTab: "beranda",
           },
-        ].map(({ Icon, label, value, sub, color, bg, accent }) => (
-          <div key={label} style={{ ...s.statCard, background: bg }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <div style={{ ...s.statIconWrap, background: accent }}>
-                <Icon size={17} color="#fff" strokeWidth={1.8} />
+        ].map(({ Icon, label, value, sub, targetTab }) => (
+          <Link to={`/dashboard?tab=${targetTab}`} key={label} className="dashboard-stat-card">
+            <div className="dashboard-stat-left">
+              <div className="dashboard-stat-icon-wrap">
+                <Icon size={18} strokeWidth={2} />
               </div>
+              <h3 className="dashboard-stat-value">{value}</h3>
+              <p className="dashboard-stat-label">{label}</p>
+              <p className="dashboard-stat-sub">{sub}</p>
             </div>
-            <p style={{ ...s.statValue, color }}>{value}</p>
-            <p style={{ ...s.statLabel, color }}>{label}</p>
-            <p style={{ fontSize: "0.72rem", color, opacity: 0.55, margin: 0 }}>{sub}</p>
-          </div>
+            <ChevronRight size={16} className="dashboard-stat-chevron" />
+          </Link>
         ))}
       </div>
 
-      {/* ── Row 2: Store info + Recent orders ── */}
-      <div style={s.twoCol}>
+      {/* Row 2: Store info + Recent orders */}
+      <div className="dashboard-twocol">
         
-        {/* Left column: Profil Toko + Sebaran Status */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <div style={s.card}>
-            <p style={s.cardLabel}>Profil Toko</p>
-            <div style={s.storeInfo}>
-              <div style={s.storeAvatarWrap}>
-                <Store size={24} color="#5C381D" strokeWidth={1.5} />
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={s.storeName}>{store.name}</p>
-                <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
-                  {store.rating ? (
-                    <>
-                      <Star size={12} color="#F59E0B" fill="#F59E0B" />
-                      <span style={s.storeRating}>
-                        {store.rating.toFixed(1)} ({store.review_count} ulasan)
-                      </span>
-                    </>
-                  ) : (
-                    <span style={s.storeRating}>Belum ada ulasan</span>
-                  )}
-                </div>
-              </div>
-              <div style={s.statusPillGreen}>
-                <span style={s.statusDot} />
-                Aktif
+        {/* Left column: Profil Toko */}
+        <div className="dashboard-card">
+          <p className="dashboard-card-label">Profil Toko</p>
+          <div className="dashboard-store-info">
+            <div className="dashboard-store-avatar">
+              <Store size={24} strokeWidth={1.8} />
+            </div>
+            <div className="dashboard-store-name-wrap">
+              <p className="dashboard-store-name">{store.name}</p>
+              <div className="dashboard-store-rating-row">
+                {store.rating != null ? (
+                  <>
+                    <Star size={13} color="#F59E0B" fill="#F59E0B" />
+                    <span className="dashboard-store-rating-text">
+                      {Number(store.rating).toFixed(1)} ({store.review_count || 0} ulasan)
+                    </span>
+                  </>
+                ) : (
+                  <span className="dashboard-store-rating-text">Belum ada ulasan</span>
+                )}
               </div>
             </div>
-
-            <div style={s.storeMetaGrid}>
-              <div style={s.storeMeta}>
-                <MapPin size={13} color="#9CA3AF" />
-                <span>{store.location || "Lokasi belum diisi"}</span>
-              </div>
-              <div style={s.storeMeta}>
-                <Calendar size={13} color="#9CA3AF" />
-                <span>Bergabung {formatJoined(store.joined_at)}</span>
-              </div>
-              <div style={s.storeMeta}>
-                <Layers size={13} color="#9CA3AF" />
-                <span>{products.length} produk terdaftar</span>
-              </div>
+            <div className="dashboard-status-pill">
+              <span className="dashboard-status-dot" />
+              Aktif
             </div>
-
-            {store.description && (
-              <p style={s.storeDesc}>{store.description}</p>
-            )}
           </div>
 
-          <div style={s.card}>
-            <p style={s.cardLabel}>Status Pesanan</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {Object.entries(STATUS_META).map(([key, meta]) => {
-                const count = orders.filter((o) => o.status === key).length;
-                const pct = orders.length > 0 ? Math.round((count / orders.length) * 100) : 0;
+          <div className="dashboard-store-meta-list">
+            <div className="dashboard-store-meta-item">
+              <MapPin size={14} />
+              <span>{store.location || "Lokasi belum diisi"}</span>
+            </div>
+            <div className="dashboard-store-meta-item">
+              <Calendar size={14} />
+              <span>Bergabung {formatJoined(store.joined_at)}</span>
+            </div>
+            <div className="dashboard-store-meta-item">
+              <Tag size={14} />
+              <span>Kategori Utama: {store.categories}</span>
+            </div>
+          </div>
+
+          {store.description && (
+            <p className="dashboard-store-desc">{store.description}</p>
+          )}
+
+          <div className="dashboard-centered-footer">
+            <Link to="/profil" className="dashboard-btn-pill-outline">
+              <Edit2 size={13} />
+              Edit Profil
+            </Link>
+          </div>
+        </div>
+
+        {/* Right column: Recent orders */}
+        <div className="dashboard-card">
+          <div className="dashboard-card-header-row">
+            <p className="dashboard-card-label" style={{ margin: 0 }}>Pesanan Terbaru</p>
+            <Link to="/dashboard?tab=pesanan" className="dashboard-see-all-link">
+              Lihat semua <ChevronRight size={13} />
+            </Link>
+          </div>
+
+          {orders.length === 0 ? (
+            <div className="dashboard-empty-state" style={{ border: "none", padding: "32px 0" }}>
+              <ShoppingBag size={28} color="#D1D5DB" />
+              <p className="dashboard-empty-sub" style={{ margin: "8px 0 0" }}>
+                Belum ada pesanan masuk.
+              </p>
+            </div>
+          ) : (
+            <div className="dashboard-recent-orders-list">
+              {orders.slice(0, 3).map((o) => {
+                const meta = STATUS_META[o.status] || STATUS_META.menunggu_konfirmasi;
                 const { Icon: StatusIcon } = meta;
                 return (
-                  <div key={key}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 5 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <StatusIcon size={12} color={meta.fg} strokeWidth={2} />
-                        <span style={{ fontSize: "0.78rem", color: "#374151", fontWeight: 500 }}>{meta.label}</span>
-                      </div>
-                      <span style={{ fontSize: "0.75rem", color: "#6B7280", fontWeight: 700 }}>{count} pesanan</span>
+                  <div key={o.id} className="dashboard-order-row-small">
+                    <div className="dashboard-order-status-icon-wrap" style={{ background: meta.bg }}>
+                      <StatusIcon size={16} color={meta.fg} strokeWidth={2.5} />
                     </div>
-                    <div style={{ height: 5, background: "#F3F4F6", borderRadius: 99, overflow: "hidden" }}>
-                      <div style={{ height: "100%", width: `${pct}%`, background: meta.fg, borderRadius: 99 }} />
+                    <div className="dashboard-order-info-small">
+                      <p className="dashboard-order-code-small">{orderCode(o)}</p>
+                      <p className="dashboard-order-buyer-small">{o.buyer_name}</p>
+                    </div>
+                    <div className="dashboard-order-amt-col">
+                      <p className="dashboard-order-amt-small">{formatRp(o.total)}</p>
+                      <span className="status-pill-badge" style={{ background: meta.bg, color: meta.fg }}>
+                        {meta.label}
+                      </span>
                     </div>
                   </div>
                 );
               })}
+              
+              <div className="dashboard-centered-footer">
+                <Link to="/dashboard?tab=pesanan" className="dashboard-btn-pill-outline">
+                  <List size={13} />
+                  Kelola Pesanan
+                </Link>
+              </div>
             </div>
-          </div>
+          )}
         </div>
-
-        {/* Right column: Recent orders + Active products */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          {/* Recent orders */}
-          <div style={s.card}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-              <p style={s.cardLabel}>Pesanan Terbaru</p>
-              <Link to="/dashboard?tab=pesanan" style={s.seeAllLink}>
-                Lihat semua <ChevronRight size={13} />
-              </Link>
-            </div>
-
-            {orders.length === 0 ? (
-              <div style={s.emptySmall}>
-                <ShoppingBag size={24} color="#D1D5DB" />
-                <p style={{ color: "#9CA3AF", fontSize: "0.82rem", margin: "8px 0 0" }}>
-                  Belum ada pesanan masuk.
-                </p>
-              </div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                {orders.slice(0, 5).map((o, i) => {
-                  const meta = STATUS_META[o.status] || STATUS_META.menunggu_konfirmasi;
-                  const { Icon: StatusIcon } = meta;
-                  return (
-                    <div
-                      key={o.id}
-                      style={{
-                        ...s.orderRowSmall,
-                        borderBottom: i < Math.min(orders.length, 5) - 1 ? "1px solid #F3F4F6" : "none",
-                      }}
-                    >
-                      <div style={{ ...s.orderStatusDot, background: meta.bg }}>
-                        <StatusIcon size={13} color={meta.fg} strokeWidth={2} />
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={s.orderCodeSmall}>{orderCode(o)}</p>
-                        <p style={s.orderBuyerSmall}>{o.buyer_name}</p>
-                      </div>
-                      <div style={{ textAlign: "right" }}>
-                        <p style={s.orderAmtSmall}>{formatRp(o.total)}</p>
-                        <span style={{ ...s.statusTag, background: meta.bg, color: meta.fg }}>
-                          {meta.label}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Active products overview */}
-          <div style={s.card}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-              <p style={s.cardLabel}>Ringkasan Produk Aktif</p>
-              <Link to="/dashboard?tab=produk" style={s.seeAllLink}>
-                Kelola <ChevronRight size={13} />
-              </Link>
-            </div>
-
-            {products.length === 0 ? (
-              <div style={s.emptySmall}>
-                <Package size={24} color="#D1D5DB" />
-                <p style={{ color: "#9CA3AF", fontSize: "0.82rem", margin: "8px 0 0" }}>
-                  Belum ada produk aktif.
-                </p>
-              </div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                {products.slice(0, 4).map((p) => (
-                  <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <div style={{ width: 36, height: 36, borderRadius: 8, background: "#F3F4F6", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
-                      {p.image_url ? (
-                        <img src={p.image_url} alt={p.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                      ) : (
-                        <Package size={16} color="#AEAEB2" />
-                      )}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontSize: "0.84rem", fontWeight: 600, color: "#1D1D1F", margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                        {p.name}
-                      </p>
-                      <p style={{ fontSize: "0.74rem", color: "#6B7280", margin: "2px 0 0" }}>
-                        Stok: {p.stock} {p.unit} · Rp {p.price.toLocaleString("id-ID")}/{p.unit}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
       </div>
     </div>
   );
@@ -455,111 +497,99 @@ function ProdukTab({ products, onDelete }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {products.length === 0 ? (
-        <div style={s.emptyState}>
+        <div className="dashboard-empty-state">
           <Package size={36} color="#D1D5DB" strokeWidth={1.2} />
-          <p style={s.emptyTitle}>Belum ada produk</p>
-          <p style={s.emptySub}>Tambahkan produk limbah kelapa pertama Anda untuk mulai berjualan.</p>
-          <Link to="/dashboard/tambah-produk" style={s.actionBtn}>
+          <h3 className="dashboard-empty-title">Belum ada produk</h3>
+          <p className="dashboard-empty-sub">Tambahkan produk limbah kelapa pertama Anda untuk mulai berjualan.</p>
+          <Link to="/dashboard/tambah-produk" className="dashboard-action-btn">
             <Plus size={15} /> Tambah Produk Pertama
           </Link>
         </div>
       ) : (
-        <>
-          <div style={s.tableWrap}>
-            <table style={s.table}>
-              <thead>
-                <tr>
-                  <th style={s.th}>Produk</th>
-                  <th style={s.th}>Kategori</th>
-                  <th style={s.th}>Harga</th>
-                  <th style={s.th}>Stok</th>
-                  <th style={s.th}>Status</th>
-                  <th style={s.th}></th>
+        <div className="dashboard-table-wrap">
+          <table className="dashboard-table">
+            <thead>
+              <tr>
+                <th className="dashboard-table-th">Produk</th>
+                <th className="dashboard-table-th">Kategori</th>
+                <th className="dashboard-table-th">Harga</th>
+                <th className="dashboard-table-th">Stok</th>
+                <th className="dashboard-table-th">Status</th>
+                <th className="dashboard-table-th"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {products.map((p) => (
+                <tr key={p.id}>
+                  {/* Produk info */}
+                  <td className="dashboard-table-td" data-label="Produk">
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      <div className="dashboard-product-thumb">
+                        {p.image_url ? (
+                          <img
+                            src={p.image_url}
+                            alt={p.name}
+                            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                          />
+                        ) : (
+                          <Package size={18} color="#D1D5DB" />
+                        )}
+                      </div>
+                      <div>
+                        <p className="dashboard-product-name">{p.name}</p>
+                        <p className="dashboard-product-unit">per {p.unit}</p>
+                      </div>
+                    </div>
+                  </td>
+                  {/* Kategori */}
+                  <td className="dashboard-table-td" data-label="Kategori">
+                    <span className="dashboard-tag-badge">
+                      <Tag size={11} /> {p.category}
+                    </span>
+                  </td>
+                  {/* Harga */}
+                  <td className="dashboard-table-td" data-label="Harga">
+                    <p className="dashboard-price-text">Rp {(p.price || 0).toLocaleString("id-ID")}</p>
+                  </td>
+                  {/* Stok */}
+                  <td className="dashboard-table-td" data-label="Stok">
+                    <p className="dashboard-stock-text" style={{ color: p.stock <= 5 ? "var(--danger)" : "var(--ink)" }}>
+                      {p.stock} {p.unit}
+                    </p>
+                  </td>
+                  {/* Status */}
+                  <td className="dashboard-table-td" data-label="Status">
+                    <span className="status-pill-badge" style={{
+                      background: p.status === "active" ? "var(--green-100)" : "#F3F4F6",
+                      color: p.status === "active" ? "var(--green-900)" : "var(--ink-soft)",
+                    }}>
+                      {p.status === "active" ? "Aktif" : "Nonaktif"}
+                    </span>
+                  </td>
+                  {/* Actions */}
+                  <td className="dashboard-table-td actions-td">
+                    <div className="dashboard-actions-td-content">
+                      <Link
+                        to={`/dashboard/produk/${p.id}/edit`}
+                        className="dashboard-icon-btn"
+                        title="Edit produk"
+                      >
+                        <Edit2 size={14} strokeWidth={2} />
+                      </Link>
+                      <button
+                        className="dashboard-icon-btn delete-btn"
+                        onClick={() => onDelete(p.id)}
+                        title="Hapus produk"
+                      >
+                        <Trash2 size={14} strokeWidth={2} />
+                      </button>
+                    </div>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {products.map((p, i) => (
-                  <tr
-                    key={p.id}
-                    style={{
-                      background: i % 2 === 0 ? "#fff" : "#FAFAFA",
-                      transition: "background 0.15s",
-                    }}
-                  >
-                    {/* Produk info */}
-                    <td style={s.td}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                        <div style={s.productThumb}>
-                          {p.image_url ? (
-                            <img
-                              src={p.image_url}
-                              alt={p.name}
-                              style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                            />
-                          ) : (
-                            <Package size={18} color="#D1D5DB" />
-                          )}
-                        </div>
-                        <div>
-                          <p style={s.productName}>{p.name}</p>
-                          <p style={s.productUnit}>per {p.unit}</p>
-                        </div>
-                      </div>
-                    </td>
-                    {/* Kategori */}
-                    <td style={s.td}>
-                      <span style={s.categoryTag}>
-                        <Tag size={11} /> {p.category}
-                      </span>
-                    </td>
-                    {/* Harga */}
-                    <td style={s.td}>
-                      <p style={s.priceText}>Rp {p.price.toLocaleString("id-ID")}</p>
-                    </td>
-                    {/* Stok */}
-                    <td style={s.td}>
-                      <p style={{
-                        ...s.stockText,
-                        color: p.stock <= 5 ? "#DC2626" : "#374151",
-                      }}>
-                        {p.stock} {p.unit}
-                      </p>
-                    </td>
-                    {/* Status */}
-                    <td style={s.td}>
-                      <span style={{
-                        ...s.statusTag,
-                        background: p.status === "active" ? "#D1FAE5" : "#F3F4F6",
-                        color: p.status === "active" ? "#065F46" : "#6B7280",
-                      }}>
-                        {p.status === "active" ? "Aktif" : "Nonaktif"}
-                      </span>
-                    </td>
-                    {/* Actions */}
-                    <td style={{ ...s.td, textAlign: "right" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "flex-end" }}>
-                        <Link
-                          to={`/dashboard/produk/${p.id}/edit`}
-                          style={s.iconBtn}
-                          title="Edit produk"
-                        >
-                          <Edit2 size={15} strokeWidth={1.8} />
-                        </Link>
-                        <button
-                          style={{ ...s.iconBtn, color: "#DC2626" }}
-                          onClick={() => onDelete(p.id)}
-                          title="Hapus produk"
-                        >
-                          <Trash2 size={15} strokeWidth={1.8} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );
@@ -585,7 +615,7 @@ function PesananTab({ orders, onUpdateStatus }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {/* Filter tabs */}
-      <div style={s.filterRow}>
+      <div className="dashboard-filter-row">
         {tabs.map((t) => {
           const count = t.key === "semua"
             ? orders.length
@@ -594,20 +624,11 @@ function PesananTab({ orders, onUpdateStatus }) {
             <button
               key={t.key}
               onClick={() => setFilter(t.key)}
-              style={{
-                ...s.filterTab,
-                background: filter === t.key ? "#1D1D1F" : "transparent",
-                color: filter === t.key ? "#fff" : "#6B7280",
-                borderColor: filter === t.key ? "#1D1D1F" : "#E5E7EB",
-              }}
+              className={`dashboard-filter-tab ${filter === t.key ? "active" : ""}`}
             >
               {t.label}
               {count > 0 && (
-                <span style={{
-                  ...s.filterCount,
-                  background: filter === t.key ? "rgba(255,255,255,0.2)" : "#F3F4F6",
-                  color: filter === t.key ? "#fff" : "#374151",
-                }}>
+                <span className="dashboard-filter-count">
                   {count}
                 </span>
               )}
@@ -618,66 +639,65 @@ function PesananTab({ orders, onUpdateStatus }) {
 
       {/* Order cards */}
       {filtered.length === 0 ? (
-        <div style={s.emptyState}>
+        <div className="dashboard-empty-state">
           <ShoppingBag size={36} color="#D1D5DB" strokeWidth={1.2} />
-          <p style={s.emptyTitle}>Tidak ada pesanan</p>
-          <p style={s.emptySub}>Belum ada pesanan dengan status ini.</p>
+          <h3 className="dashboard-empty-title">Tidak ada pesanan</h3>
+          <p className="dashboard-empty-sub">Belum ada pesanan dengan status ini.</p>
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {filtered.map((o) => {
             const meta = STATUS_META[o.status] || STATUS_META.menunggu_konfirmasi;
             const { Icon: StatusIcon } = meta;
             return (
-              <div key={o.id} style={s.orderCard}>
+              <div key={o.id} className="dashboard-order-card">
                 {/* Header */}
-                <div style={s.orderCardHead}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <div style={{ ...s.orderStatusIcon, background: meta.bg }}>
-                      <StatusIcon size={15} color={meta.fg} strokeWidth={2} />
+                <div className="dashboard-order-card-head">
+                  <div className="dashboard-order-card-title-block">
+                    <div className="dashboard-order-card-icon-wrap" style={{ background: meta.bg }}>
+                      <StatusIcon size={16} color={meta.fg} strokeWidth={2.5} />
                     </div>
                     <div>
-                      <p style={s.orderCardCode}>{orderCode(o)}</p>
-                      <p style={s.orderCardDate}>{formatOrderDate(o.created_at)}</p>
+                      <p className="dashboard-order-card-code">{orderCode(o)}</p>
+                      <p className="dashboard-order-card-date">{formatOrderDate(o.created_at)}</p>
                     </div>
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <span style={{
-                      ...s.statusTag,
-                      background: o.payment_status === "paid" ? "#D1FAE5" : "#FEE2E2",
-                      color: o.payment_status === "paid" ? "#065F46" : "#991B1B",
+                  <div className="dashboard-order-card-badges">
+                    <span className="status-pill-badge" style={{
+                      background: o.payment_status === "paid" ? "var(--green-100)" : (o.midtrans_tx_id && o.midtrans_tx_id.startsWith("COD") ? "#FEF3C7" : "#FEE2E2"),
+                      color: o.payment_status === "paid" ? "var(--green-900)" : (o.midtrans_tx_id && o.midtrans_tx_id.startsWith("COD") ? "#92400E" : "#991B1B"),
                     }}>
-                      {o.payment_status === "paid" ? "Lunas" : "Belum Lunas"}
+                      {o.payment_status === "paid" ? "Lunas" : (o.midtrans_tx_id && o.midtrans_tx_id.startsWith("COD") ? "COD (Bayar di Tempat)" : "Belum Lunas")}
                     </span>
-                    <span style={{ ...s.statusTag, background: meta.bg, color: meta.fg }}>
+                    <span className="status-pill-badge" style={{ background: meta.bg, color: meta.fg }}>
                       {meta.label}
                     </span>
                   </div>
                 </div>
 
                 {/* Body */}
-                <div style={s.orderCardBody}>
+                <div className="dashboard-order-card-body">
                   {/* Buyer info */}
-                  <div style={s.orderSection}>
-                    <p style={s.orderSectionLabel}>Pembeli</p>
-                    <p style={s.orderBuyerName}>{o.buyer_name}</p>
+                  <div className="dashboard-order-section">
+                    <p className="dashboard-order-section-label">Pembeli</p>
+                    <p className="dashboard-order-buyer-name">{o.buyer_name}</p>
                     {o.shipping_address && (
-                      <p style={s.orderAddress}>{o.shipping_address}</p>
+                      <p className="dashboard-order-address">{o.shipping_address}</p>
                     )}
                   </div>
 
                   {/* Items */}
-                  <div style={s.orderSection}>
-                    <p style={s.orderSectionLabel}>Produk ({o.items.length})</p>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                      {o.items.map((it) => (
-                        <div key={it.id} style={s.orderItemRow}>
-                          <span style={{ flex: 1, color: "#374151", fontSize: "0.88rem" }}>
+                  <div className="dashboard-order-section">
+                    <p className="dashboard-order-section-label">Produk ({(o.items || []).length})</p>
+                    <div className="dashboard-order-items-list">
+                      {(o.items || []).map((it) => (
+                        <div key={it.id} className="dashboard-order-item-row">
+                          <span className="dashboard-order-item-name">
                             {it.product_name}
-                            <span style={{ color: "#9CA3AF", marginLeft: 6 }}>x{it.qty}</span>
+                            <span className="dashboard-order-item-qty">x{it.qty}</span>
                           </span>
-                          <span style={{ fontWeight: 600, fontSize: "0.88rem", color: "#1D1D1F" }}>
-                            Rp {it.subtotal.toLocaleString("id-ID")}
+                          <span className="dashboard-order-item-subtotal">
+                            Rp {(it.subtotal || 0).toLocaleString("id-ID")}
                           </span>
                         </div>
                       ))}
@@ -685,24 +705,24 @@ function PesananTab({ orders, onUpdateStatus }) {
                   </div>
 
                   {/* Total breakdown */}
-                  <div style={s.orderSection}>
-                    <p style={s.orderSectionLabel}>Rincian Biaya</p>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                      <div style={s.costRow}>
+                  <div className="dashboard-order-section">
+                    <p className="dashboard-order-section-label">Rincian Biaya</p>
+                    <div className="dashboard-cost-list">
+                      <div className="dashboard-cost-row">
                         <span>Subtotal Produk</span>
                         <span>Rp {(o.total - (o.admin_fee || 0) - (o.shipping_cost || 0)).toLocaleString("id-ID")}</span>
                       </div>
-                      <div style={s.costRow}>
+                      <div className="dashboard-cost-row">
                         <span>Biaya Admin (10%)</span>
                         <span>Rp {(o.admin_fee || 0).toLocaleString("id-ID")}</span>
                       </div>
-                      <div style={s.costRow}>
+                      <div className="dashboard-cost-row">
                         <span>Ongkos Kirim</span>
                         <span>{o.shipping_cost > 0 ? `Rp ${o.shipping_cost.toLocaleString("id-ID")}` : "Pick Up"}</span>
                       </div>
-                      <div style={{ ...s.costRow, ...s.costTotal }}>
+                      <div className="dashboard-cost-row dashboard-cost-total-row">
                         <span>Total Transaksi</span>
-                        <span>Rp {o.total.toLocaleString("id-ID")}</span>
+                        <span>Rp {(o.total || 0).toLocaleString("id-ID")}</span>
                       </div>
                     </div>
                   </div>
@@ -710,31 +730,31 @@ function PesananTab({ orders, onUpdateStatus }) {
 
                 {/* Actions */}
                 {(o.status === "menunggu_konfirmasi" || o.status === "diproses") && (
-                  <div style={s.orderCardFoot}>
+                  <div className="dashboard-order-card-foot">
                     {o.status === "menunggu_konfirmasi" && (
                       <>
                         <button
-                          style={s.btnPrimary}
+                          className="dashboard-btn-action-primary"
                           onClick={() => onUpdateStatus(o.id, "diproses")}
                         >
-                          <Check size={15} strokeWidth={2.5} />
+                          <Check size={14} strokeWidth={2.5} />
                           Terima Pesanan
                         </button>
                         <button
-                          style={s.btnDanger}
+                          className="dashboard-btn-action-danger"
                           onClick={() => onUpdateStatus(o.id, "ditolak")}
                         >
-                          <X size={15} strokeWidth={2.5} />
+                          <X size={14} strokeWidth={2.5} />
                           Tolak
                         </button>
                       </>
                     )}
                     {o.status === "diproses" && (
                       <button
-                        style={s.btnPrimary}
+                        className="dashboard-btn-action-primary"
                         onClick={() => onUpdateStatus(o.id, "dikirim")}
                       >
-                        <Truck size={15} strokeWidth={1.8} />
+                        <Truck size={14} strokeWidth={2} />
                         Tandai Dikirim
                       </button>
                     )}
@@ -748,670 +768,3 @@ function PesananTab({ orders, onUpdateStatus }) {
     </div>
   );
 }
-
-/* ── Styles ── */
-const s = {
-  /* Shell */
-  shell: {
-    maxWidth: 1200,
-    margin: "0 auto",
-    padding: "32px 32px 80px",
-    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-    WebkitFontSmoothing: "antialiased",
-    boxSizing: "border-box",
-  },
-  loadingWrap: {
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-    minHeight: 400,
-  },
-  spinner: {
-    width: 32,
-    height: 32,
-    border: "2.5px solid #E5E7EB",
-    borderTopColor: "#1D1D1F",
-    borderRadius: "50%",
-    animation: "spin 0.7s linear infinite",
-  },
-  /* Top bar */
-  topBar: {
-    display: "flex",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    marginBottom: 28,
-    gap: 16,
-  },
-  topBarTitle: {
-    fontSize: "1.8rem",
-    fontWeight: 700,
-    color: "#1D1D1F",
-    letterSpacing: "-0.02em",
-    margin: 0,
-    lineHeight: 1.2,
-  },
-  topBarSub: {
-    fontSize: "0.84rem",
-    color: "#6B7280",
-    margin: "5px 0 0",
-  },
-  /* Notification */
-  notifBtn: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    width: 40,
-    height: 40,
-    border: "1.5px solid #E5E7EB",
-    borderRadius: 10,
-    cursor: "pointer",
-    position: "relative",
-    transition: "all 0.2s",
-  },
-  notifBadge: {
-    position: "absolute",
-    top: -6,
-    right: -6,
-    minWidth: 18,
-    height: 18,
-    borderRadius: 99,
-    background: "#EF4444",
-    color: "#fff",
-    fontSize: "0.66rem",
-    fontWeight: 700,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: "0 4px",
-    border: "2px solid #fff",
-  },
-  notifDropdown: {
-    position: "absolute",
-    top: "calc(100% + 10px)",
-    right: 0,
-    width: 360,
-    background: "#fff",
-    border: "1px solid #E5E7EB",
-    borderRadius: 14,
-    boxShadow: "0 8px 30px rgba(0,0,0,0.12)",
-    zIndex: 200,
-    overflow: "hidden",
-  },
-  notifHeader: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: "14px 16px",
-    borderBottom: "1px solid #F3F4F6",
-  },
-  notifHeaderTitle: {
-    fontSize: "0.84rem",
-    fontWeight: 700,
-    color: "#1D1D1F",
-  },
-  notifClose: {
-    background: "none",
-    border: "none",
-    cursor: "pointer",
-    color: "#9CA3AF",
-    display: "flex",
-    alignItems: "center",
-    padding: 4,
-  },
-  notifEmpty: {
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    padding: "28px 16px",
-  },
-  notifItem: {
-    display: "flex",
-    alignItems: "center",
-    gap: 10,
-    padding: "12px 16px",
-    borderBottom: "1px solid #F3F4F6",
-    transition: "background 0.15s",
-  },
-  notifItemIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 9,
-    background: "#FAF4ED",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
-  },
-  notifItemTitle: {
-    fontSize: "0.82rem",
-    fontWeight: 700,
-    color: "#1D1D1F",
-    margin: 0,
-  },
-  notifItemSub: {
-    fontSize: "0.76rem",
-    color: "#6B7280",
-    margin: "2px 0 0",
-  },
-  notifActionBtn: {
-    display: "flex",
-    alignItems: "center",
-    gap: 4,
-    background: "#1D1D1F",
-    color: "#fff",
-    border: "none",
-    borderRadius: 7,
-    padding: "6px 10px",
-    fontSize: "0.75rem",
-    fontWeight: 600,
-    cursor: "pointer",
-    whiteSpace: "nowrap",
-  },
-  notifFooter: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 4,
-    padding: "12px",
-    fontSize: "0.8rem",
-    fontWeight: 600,
-    color: "#5C381D",
-    textDecoration: "none",
-    borderTop: "1px solid #F3F4F6",
-  },
-  /* Action button */
-  actionBtn: {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 8,
-    background: "#1D1D1F",
-    color: "#fff",
-    textDecoration: "none",
-    border: "none",
-    borderRadius: 10,
-    padding: "10px 18px",
-    fontSize: "0.88rem",
-    fontWeight: 600,
-    cursor: "pointer",
-    whiteSpace: "nowrap",
-  },
-  content: { width: "100%" },
-  /* Alert card */
-  alertCard: {
-    display: "flex",
-    alignItems: "center",
-    gap: 12,
-    background: "#FEF3C7",
-    border: "1px solid #FDE68A",
-    borderRadius: 12,
-    padding: "14px 18px",
-  },
-  alertTitle: {
-    fontSize: "0.9rem",
-    fontWeight: 700,
-    color: "#92400E",
-    margin: 0,
-  },
-  alertSub: {
-    fontSize: "0.8rem",
-    color: "#78350F",
-    margin: "2px 0 0",
-  },
-  alertLink: {
-    display: "flex",
-    alignItems: "center",
-    gap: 4,
-    whiteSpace: "nowrap",
-    fontSize: "0.82rem",
-    fontWeight: 700,
-    color: "#92400E",
-    textDecoration: "none",
-    background: "rgba(255,255,255,0.6)",
-    border: "1px solid rgba(0,0,0,0.08)",
-    borderRadius: 8,
-    padding: "7px 12px",
-  },
-  /* Stats grid */
-  statsGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(4, 1fr)",
-    gap: 16,
-  },
-  statCard: {
-    borderRadius: 14,
-    padding: "20px 18px",
-    display: "flex",
-    flexDirection: "column",
-    gap: 8,
-  },
-  statIconWrap: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 4,
-  },
-  statValue: {
-    fontSize: "1.6rem",
-    fontWeight: 700,
-    letterSpacing: "-0.02em",
-    lineHeight: 1,
-    margin: 0,
-  },
-  statLabel: {
-    fontSize: "0.78rem",
-    fontWeight: 600,
-    margin: 0,
-    opacity: 0.75,
-  },
-  /* Two-col layout */
-  twoCol: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1.6fr",
-    gap: 16,
-    alignItems: "start",
-  },
-  card: {
-    background: "#fff",
-    border: "1px solid #E5E7EB",
-    borderRadius: 14,
-    padding: "20px",
-  },
-  cardLabel: {
-    fontSize: "0.75rem",
-    fontWeight: 700,
-    color: "#9CA3AF",
-    textTransform: "uppercase",
-    letterSpacing: "0.06em",
-    margin: "0 0 14px 0",
-  },
-  /* Store info */
-  storeInfo: {
-    display: "flex",
-    alignItems: "center",
-    gap: 12,
-    marginBottom: 16,
-  },
-  storeAvatarWrap: {
-    width: 52,
-    height: 52,
-    borderRadius: 12,
-    background: "#FAF4ED",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
-  },
-  storeName: {
-    fontSize: "1rem",
-    fontWeight: 700,
-    color: "#1D1D1F",
-    margin: 0,
-    lineHeight: 1.3,
-  },
-  storeRating: {
-    fontSize: "0.78rem",
-    color: "#6B7280",
-  },
-  statusPillGreen: {
-    display: "flex",
-    alignItems: "center",
-    gap: 5,
-    fontSize: "0.75rem",
-    fontWeight: 600,
-    color: "#065F46",
-    background: "#D1FAE5",
-    borderRadius: 99,
-    padding: "4px 10px",
-    whiteSpace: "nowrap",
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: "50%",
-    background: "#10B981",
-    display: "inline-block",
-  },
-  storeMetaGrid: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 7,
-    paddingTop: 12,
-    borderTop: "1px solid #F3F4F6",
-  },
-  storeMeta: {
-    display: "flex",
-    alignItems: "center",
-    gap: 7,
-    fontSize: "0.8rem",
-    color: "#6B7280",
-  },
-  storeDesc: {
-    fontSize: "0.82rem",
-    color: "#6B7280",
-    lineHeight: 1.6,
-    marginTop: 12,
-    paddingTop: 12,
-    borderTop: "1px solid #F3F4F6",
-  },
-  /* Sidebar recent orders */
-  seeAllLink: {
-    display: "flex",
-    alignItems: "center",
-    gap: 2,
-    fontSize: "0.78rem",
-    fontWeight: 600,
-    color: "#5C381D",
-    textDecoration: "none",
-  },
-  emptySmall: {
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    padding: "24px 0",
-  },
-  orderRowSmall: {
-    display: "flex",
-    alignItems: "center",
-    gap: 10,
-    padding: "10px 0",
-  },
-  orderStatusDot: {
-    width: 30,
-    height: 30,
-    borderRadius: 8,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
-  },
-  orderCodeSmall: {
-    fontSize: "0.8rem",
-    fontWeight: 700,
-    color: "#1D1D1F",
-    margin: 0,
-    lineHeight: 1.3,
-  },
-  orderBuyerSmall: {
-    fontSize: "0.75rem",
-    color: "#6B7280",
-    margin: "2px 0 0",
-  },
-  orderAmtSmall: {
-    fontSize: "0.82rem",
-    fontWeight: 700,
-    color: "#1D1D1F",
-    margin: 0,
-  },
-  /* Table (Produk Tab) */
-  tableWrap: {
-    background: "#fff",
-    border: "1px solid #E5E7EB",
-    borderRadius: 14,
-    overflow: "hidden",
-  },
-  table: {
-    width: "100%",
-    borderCollapse: "collapse",
-    fontSize: "0.88rem",
-  },
-  th: {
-    textAlign: "left",
-    padding: "12px 16px",
-    fontSize: "0.75rem",
-    fontWeight: 700,
-    color: "#9CA3AF",
-    textTransform: "uppercase",
-    letterSpacing: "0.05em",
-    borderBottom: "1px solid #F3F4F6",
-    background: "#FAFAFA",
-  },
-  td: {
-    padding: "14px 16px",
-    color: "#374151",
-    verticalAlign: "middle",
-  },
-  productThumb: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
-    background: "#F3F4F6",
-    overflow: "hidden",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
-  },
-  productName: {
-    fontWeight: 600,
-    color: "#1D1D1F",
-    margin: 0,
-    fontSize: "0.9rem",
-  },
-  productUnit: {
-    fontSize: "0.75rem",
-    color: "#9CA3AF",
-    margin: "2px 0 0",
-  },
-  categoryTag: {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 4,
-    background: "#F3F4F6",
-    color: "#374151",
-    borderRadius: 6,
-    padding: "3px 8px",
-    fontSize: "0.78rem",
-    fontWeight: 500,
-  },
-  priceText: {
-    fontWeight: 700,
-    color: "#1D1D1F",
-    margin: 0,
-  },
-  stockText: {
-    fontWeight: 600,
-    margin: 0,
-  },
-  statusTag: {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 4,
-    borderRadius: 6,
-    padding: "3px 8px",
-    fontSize: "0.75rem",
-    fontWeight: 700,
-    whiteSpace: "nowrap",
-  },
-  iconBtn: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    width: 32,
-    height: 32,
-    border: "1px solid #E5E7EB",
-    borderRadius: 8,
-    background: "#fff",
-    color: "#374151",
-    textDecoration: "none",
-    cursor: "pointer",
-    transition: "all 0.15s",
-  },
-  /* Filter tabs (Pesanan) */
-  filterRow: {
-    display: "flex",
-    gap: 6,
-    flexWrap: "wrap",
-  },
-  filterTab: {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 6,
-    border: "1.5px solid",
-    borderRadius: 8,
-    padding: "7px 14px",
-    fontSize: "0.82rem",
-    fontWeight: 600,
-    cursor: "pointer",
-    transition: "all 0.2s",
-  },
-  filterCount: {
-    borderRadius: 99,
-    padding: "1px 6px",
-    fontSize: "0.72rem",
-    fontWeight: 700,
-  },
-  /* Order card */
-  orderCard: {
-    background: "#fff",
-    border: "1px solid #E5E7EB",
-    borderRadius: 14,
-    overflow: "hidden",
-  },
-  orderCardHead: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: "16px 20px",
-    borderBottom: "1px solid #F3F4F6",
-    background: "#FAFAFA",
-  },
-  orderStatusIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 9,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
-  },
-  orderCardCode: {
-    fontSize: "0.9rem",
-    fontWeight: 700,
-    color: "#1D1D1F",
-    margin: 0,
-  },
-  orderCardDate: {
-    fontSize: "0.76rem",
-    color: "#9CA3AF",
-    margin: "2px 0 0",
-  },
-  orderCardBody: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1.4fr 1fr",
-    gap: 0,
-    padding: 0,
-  },
-  orderSection: {
-    padding: "16px 20px",
-    borderRight: "1px solid #F3F4F6",
-  },
-  orderSectionLabel: {
-    fontSize: "0.72rem",
-    fontWeight: 700,
-    color: "#9CA3AF",
-    textTransform: "uppercase",
-    letterSpacing: "0.06em",
-    margin: "0 0 8px 0",
-  },
-  orderBuyerName: {
-    fontSize: "0.92rem",
-    fontWeight: 700,
-    color: "#1D1D1F",
-    margin: 0,
-  },
-  orderAddress: {
-    fontSize: "0.78rem",
-    color: "#6B7280",
-    margin: "4px 0 0",
-    lineHeight: 1.5,
-  },
-  orderItemRow: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 8,
-    padding: "5px 8px",
-    background: "#F9FAFB",
-    borderRadius: 6,
-  },
-  costRow: {
-    display: "flex",
-    justifyContent: "space-between",
-    fontSize: "0.82rem",
-    color: "#6B7280",
-  },
-  costTotal: {
-    marginTop: 6,
-    paddingTop: 8,
-    borderTop: "1px dashed #E5E7EB",
-    fontWeight: 700,
-    fontSize: "0.92rem",
-    color: "#1D1D1F",
-  },
-  orderCardFoot: {
-    display: "flex",
-    gap: 10,
-    padding: "14px 20px",
-    borderTop: "1px solid #F3F4F6",
-    background: "#FAFAFA",
-  },
-  /* Buttons */
-  btnPrimary: {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 7,
-    background: "#1D1D1F",
-    color: "#fff",
-    border: "none",
-    borderRadius: 9,
-    padding: "10px 18px",
-    fontSize: "0.86rem",
-    fontWeight: 600,
-    cursor: "pointer",
-    transition: "opacity 0.2s",
-  },
-  btnDanger: {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 7,
-    background: "#FEE2E2",
-    color: "#991B1B",
-    border: "none",
-    borderRadius: 9,
-    padding: "10px 18px",
-    fontSize: "0.86rem",
-    fontWeight: 600,
-    cursor: "pointer",
-    transition: "opacity 0.2s",
-  },
-  /* Empty states */
-  emptyState: {
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    padding: "60px 24px",
-    background: "#fff",
-    border: "1px dashed #E5E7EB",
-    borderRadius: 14,
-    textAlign: "center",
-  },
-  emptyTitle: {
-    fontSize: "1rem",
-    fontWeight: 700,
-    color: "#374151",
-    margin: "8px 0 0",
-  },
-  emptySub: {
-    fontSize: "0.84rem",
-    color: "#9CA3AF",
-    margin: "4px 0 12px",
-    maxWidth: 320,
-    lineHeight: 1.5,
-  },
-};

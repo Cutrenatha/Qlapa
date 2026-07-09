@@ -2,25 +2,52 @@ import React, { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { adminApi } from "../../context/AdminAuthContext.jsx";
 import { useAdminAuth } from "../../context/AdminAuthContext.jsx";
+import {
+  BarChart2, Store, Package, ClipboardList, Users,
+  TrendingUp, ShoppingCart, DollarSign, Menu, Download,
+  Loader2, User
+} from "lucide-react";
+import "./Admin.css";
 
 const STATUS_LABEL = {
-  menunggu_konfirmasi: "Menunggu Diproses",
+  menunggu_konfirmasi: "Menunggu",
   diproses: "Dikemas",
   dikirim: "Dikirim",
   selesai: "Selesai",
   ditolak: "Ditolak",
 };
 
+const STATUS_COLOR = {
+  menunggu_konfirmasi: { bg: "#FEF3C7", fg: "#B45309" },
+  diproses: { bg: "#E0E7FF", fg: "#4338CA" },
+  dikirim: { bg: "#EDE9FE", fg: "#6D28D9" },
+  selesai: { bg: "#D1FAE5", fg: "#065F46" },
+  ditolak: { bg: "#FEE2E2", fg: "#991B1B" },
+};
+
 function formatRp(n) {
+  const v = Math.round(n || 0);
+  if (v >= 1_000_000) return `Rp ${(v / 1_000_000).toFixed(1)} jt`;
+  if (v >= 1_000) return `Rp ${Math.round(v / 1_000)} rb`;
+  return `Rp${v.toLocaleString("id-ID")}`;
+}
+function formatRpFull(n) {
   return `Rp${Math.round(n || 0).toLocaleString("id-ID")}`;
 }
 function formatDate(iso) {
+  if (!iso) return "-";
   const d = new Date(iso);
-  return d.toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" });
+  return d.toLocaleDateString("id-ID", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
 }
 
 async function downloadCsv(kind) {
-  const res = await adminApi.get(`/admin/export/${kind}.csv`, { responseType: "blob" });
+  const res = await adminApi.get(`/admin/export/${kind}.csv`, {
+    responseType: "blob",
+  });
   const url = window.URL.createObjectURL(new Blob([res.data]));
   const a = document.createElement("a");
   a.href = url;
@@ -32,11 +59,11 @@ async function downloadCsv(kind) {
 }
 
 const TABS = [
-  { key: "ringkasan", label: "Ringkasan", icon: "📊" },
-  { key: "penjual", label: "Penjual & Toko", icon: "🏪" },
-  { key: "produk", label: "Produk", icon: "📦" },
-  { key: "pesanan", label: "Pesanan", icon: "🧾" },
-  { key: "pengguna", label: "Pengguna", icon: "👥" },
+  { key: "ringkasan", label: "Ringkasan",     Icon: BarChart2 },
+  { key: "penjual",   label: "Penjual & Toko", Icon: Store },
+  { key: "produk",    label: "Produk",         Icon: Package },
+  { key: "pesanan",   label: "Pesanan",        Icon: ClipboardList },
+  { key: "pengguna",  label: "Pengguna",       Icon: Users },
 ];
 
 export default function AdminDashboard() {
@@ -44,39 +71,50 @@ export default function AdminDashboard() {
   const tab = params.get("tab") || "ringkasan";
   const { admin, logout } = useAdminAuth();
   const navigate = useNavigate();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div style={styles.shell}>
-      <aside style={styles.sidebar}>
-        <div style={styles.sideHead}>
-          <span style={styles.logoDot}>Q</span>
-          <div>
-            <div style={styles.brand}>Qlapa</div>
-            <div style={styles.brandSub}>Admin Panel</div>
-          </div>
+    <div className="admin-shell">
+      {/* Sidebar overlay for mobile */}
+      {sidebarOpen && (
+        <div
+          className="admin-sidebar-overlay"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside className={`admin-sidebar${sidebarOpen ? " open" : ""}`}>
+        <div className="admin-sidebar-head">
+          <img
+            src="/assets/qlapa-logo.png"
+            alt="Qlapa"
+            className="admin-sidebar-logo-img"
+          />
+          <div className="admin-sidebar-brand-sub">Admin Panel</div>
         </div>
-        <nav style={{ marginTop: 24, flex: 1 }}>
+
+        <nav className="admin-sidebar-nav">
           {TABS.map((t) => (
             <button
               key={t.key}
-              onClick={() => setParams({ tab: t.key })}
-              style={{
-                ...styles.navItem,
-                ...(tab === t.key ? styles.navItemActive : null),
+              className={`admin-nav-item${tab === t.key ? " active" : ""}`}
+              onClick={() => {
+                setParams({ tab: t.key });
+                setSidebarOpen(false);
               }}
             >
-              <span>{t.icon}</span>
+              <span className="admin-nav-icon"><t.Icon size={16} strokeWidth={1.8} /></span>
               {t.label}
             </button>
           ))}
         </nav>
-        <div style={styles.sideFoot}>
-          <div style={{ fontSize: "0.8rem", color: "rgba(251,247,239,0.7)" }}>
-            Masuk sebagai
-          </div>
-          <div style={{ fontWeight: 700, color: "var(--cream)" }}>{admin?.name}</div>
+
+        <div className="admin-sidebar-foot">
+          <div className="admin-sidebar-user-label">Masuk sebagai</div>
+          <div className="admin-sidebar-user-name">{admin?.name}</div>
           <button
-            style={styles.logoutBtn}
+            className="admin-logout-btn"
             onClick={() => {
               logout();
               navigate("/admin/login", { replace: true });
@@ -87,21 +125,44 @@ export default function AdminDashboard() {
         </div>
       </aside>
 
-      <main style={styles.main}>
-        {tab === "ringkasan" && <Ringkasan />}
-        {tab === "penjual" && <PenjualTab />}
-        {tab === "produk" && <ProdukTab />}
-        {tab === "pesanan" && <PesananTab />}
-        {tab === "pengguna" && <PenggunaTab />}
-      </main>
+      {/* Main */}
+      <div className="admin-main-wrap">
+        {/* Top bar (mobile) */}
+        <div className="admin-topbar">
+          <button
+            className="admin-hamburger"
+            onClick={() => setSidebarOpen(true)}
+          >
+            <Menu size={20} />
+          </button>
+          <div className="admin-topbar-title">
+            {TABS.find((t) => t.key === tab)?.label || "Admin"}
+          </div>
+          <img
+            src="/assets/qlapa-logo.png"
+            alt="Qlapa"
+            className="admin-topbar-logo-img"
+          />
+        </div>
+
+        <main className="admin-main">
+          {tab === "ringkasan" && <Ringkasan />}
+          {tab === "penjual" && <PenjualTab />}
+          {tab === "produk" && <ProdukTab />}
+          {tab === "pesanan" && <PesananTab />}
+          {tab === "pengguna" && <PenggunaTab />}
+        </main>
+      </div>
     </div>
   );
 }
 
+/* ── Shared ── */
 function Loading() {
   return (
-    <div className="empty-state">
-      <div className="spinner" style={{ margin: "0 auto" }} />
+    <div className="admin-loading">
+      <div className="admin-spinner" />
+      <p className="admin-loading-text">Memuat data...</p>
     </div>
   );
 }
@@ -110,7 +171,7 @@ function ExportButton({ kind, label }) {
   const [busy, setBusy] = useState(false);
   return (
     <button
-      className="btn btn-outline btn-sm"
+      className="admin-export-btn"
       disabled={busy}
       onClick={async () => {
         setBusy(true);
@@ -121,29 +182,111 @@ function ExportButton({ kind, label }) {
         }
       }}
     >
-      {busy ? "Menyiapkan…" : `⬇ ${label}`}
+      {busy ? <Loader2 size={14} className="admin-spin-icon" /> : <Download size={14} />}
+      {busy ? "Menyiapkan..." : label}
     </button>
   );
 }
 
-/* ------------------------------ Ringkasan ------------------------------ */
+function PageHeader({ title, subtitle, actions }) {
+  return (
+    <div className="admin-page-header">
+      <div>
+        <h1 className="admin-page-title">{title}</h1>
+        <p className="admin-page-subtitle">{subtitle}</p>
+      </div>
+      {actions && <div className="admin-page-actions">{actions}</div>}
+    </div>
+  );
+}
+
+function StatusBadge({ status }) {
+  const meta = STATUS_COLOR[status] || { bg: "#F3F4F6", fg: "#6B7280" };
+  return (
+    <span
+      className="admin-status-badge"
+      style={{ background: meta.bg, color: meta.fg }}
+    >
+      {STATUS_LABEL[status] || status}
+    </span>
+  );
+}
+
+function AdminTable({ cols, rows, emptyMsg }) {
+  return (
+    <div className="admin-table-wrap">
+      <table className="admin-table">
+        <thead>
+          <tr>
+            {cols.map((c) => (
+              <th key={c} className="admin-th">
+                {c}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.length === 0 ? (
+            <tr>
+              <td className="admin-td admin-td-empty" colSpan={cols.length}>
+                {emptyMsg}
+              </td>
+            </tr>
+          ) : (
+            rows.map((row, i) => (
+              <tr key={i} className="admin-tr">
+                {row.map((cell, j) => (
+                  <td key={j} className="admin-td">
+                    {cell}
+                  </td>
+                ))}
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function AvatarCell({ src, name, isUser }) {
+  return (
+    <div className="admin-avatar-cell">
+      <div className="admin-avatar-sm">
+        {src ? (
+          <img src={src} alt={name} className="admin-avatar-img" />
+        ) : isUser ? (
+          <User size={15} color="#78716C" strokeWidth={1.8} />
+        ) : (
+          <Store size={15} color="#78716C" strokeWidth={1.8} />
+        )}
+      </div>
+      <span className="admin-avatar-name">{name}</span>
+    </div>
+  );
+}
+
+/* ── Ringkasan ── */
 function Ringkasan() {
   const [data, setData] = useState(null);
 
   useEffect(() => {
-    adminApi.get("/admin/dashboard").then((res) => setData(res.data));
+    adminApi
+      .get("/admin/dashboard")
+      .then((res) => setData(res.data))
+      .catch(() => {});
   }, []);
 
   if (!data) return <Loading />;
   const { summary, status_counts, top_sellers, recent_orders } = data;
 
-  const cards = [
-    { label: "Total Pengguna", value: summary.total_users },
-    { label: "Total Penjual", value: summary.total_sellers },
-    { label: "Total Pembeli", value: summary.total_buyers },
-    { label: "Total Produk", value: summary.total_products },
-    { label: "Total Pesanan", value: summary.total_orders },
-    { label: "Total Pendapatan (selesai)", value: formatRp(summary.total_revenue) },
+  const statCards = [
+    { label: "Total Pengguna",     value: summary.total_users,              Icon: Users,         color: "#4F46E5" },
+    { label: "Total Penjual",      value: summary.total_sellers,            Icon: Store,         color: "#059669" },
+    { label: "Total Pembeli",      value: summary.total_buyers,             Icon: ShoppingCart,  color: "#0284C7" },
+    { label: "Total Produk",       value: summary.total_products,           Icon: Package,       color: "#D97706" },
+    { label: "Total Pesanan",      value: summary.total_orders,             Icon: ClipboardList, color: "#7C3AED" },
+    { label: "Pendapatan Selesai", value: formatRp(summary.total_revenue),  Icon: DollarSign,   color: "#059669" },
   ];
 
   return (
@@ -153,94 +296,102 @@ function Ringkasan() {
         subtitle="Ikhtisar penjualan, toko, dan aktivitas Qlapa secara keseluruhan"
       />
 
-      <div style={styles.cardGrid}>
-        {cards.map((c) => (
-          <div key={c.label} className="card" style={styles.statCard}>
-            <div style={styles.statValue}>{c.value}</div>
-            <div style={styles.statLabel}>{c.label}</div>
+      {/* Stat cards */}
+      <div className="admin-stat-grid">
+        {statCards.map((c) => (
+          <div key={c.label} className="admin-stat-card">
+            <div
+              className="admin-stat-icon"
+              style={{ background: c.color + "18", color: c.color }}
+            >
+              <c.Icon size={20} strokeWidth={1.8} />
+            </div>
+            <div>
+              <div className="admin-stat-value">{c.value}</div>
+              <div className="admin-stat-label">{c.label}</div>
+            </div>
           </div>
         ))}
       </div>
 
-      <div style={styles.twoCol}>
-        <div className="card" style={{ padding: 18 }}>
-          <h3 style={styles.sectionTitle}>Status Pesanan</h3>
-          {Object.keys(status_counts).length === 0 && (
-            <p style={{ fontSize: "0.85rem" }}>Belum ada pesanan.</p>
+      {/* Two-col widgets */}
+      <div className="admin-two-col">
+        {/* Status counts */}
+        <div className="admin-widget">
+          <h3 className="admin-widget-title">Status Pesanan</h3>
+          {Object.keys(status_counts).length === 0 ? (
+            <p className="admin-empty-inline">Belum ada pesanan.</p>
+          ) : (
+            Object.entries(status_counts).map(([status, count]) => (
+              <div key={status} className="admin-widget-row">
+                <div className="admin-widget-row-left">
+                  <StatusBadge status={status} />
+                </div>
+                <strong className="admin-widget-row-val">{count}</strong>
+              </div>
+            ))
           )}
-          {Object.entries(status_counts).map(([status, count]) => (
-            <div key={status} className="row between" style={styles.statusRow}>
-              <span>{STATUS_LABEL[status] || status}</span>
-              <strong>{count}</strong>
-            </div>
-          ))}
         </div>
 
-        <div className="card" style={{ padding: 18 }}>
-          <h3 style={styles.sectionTitle}>Top Penjual (Pendapatan)</h3>
-          {top_sellers.length === 0 && (
-            <p style={{ fontSize: "0.85rem" }}>Belum ada data penjual.</p>
+        {/* Top sellers */}
+        <div className="admin-widget">
+          <h3 className="admin-widget-title">Top Penjual (Pendapatan)</h3>
+          {top_sellers.length === 0 ? (
+            <p className="admin-empty-inline">Belum ada data penjual.</p>
+          ) : (
+            top_sellers.map((s, i) => (
+              <div key={s.id} className="admin-widget-row">
+                <div className="admin-widget-row-left">
+                  <span className="admin-rank-num">{i + 1}</span>
+                  <span className="admin-widget-store-name">
+                    {s.store_name}
+                  </span>
+                  <span className="admin-widget-meta">
+                    {s.product_count} produk
+                  </span>
+                </div>
+                <strong className="admin-widget-row-val">
+                  {formatRp(s.revenue)}
+                </strong>
+              </div>
+            ))
           )}
-          {top_sellers.map((s, i) => (
-            <div key={s.id} className="row between" style={styles.statusRow}>
-              <span>
-                {i + 1}. {s.store_name}{" "}
-                <span style={{ color: "var(--ink-soft)", fontSize: "0.78rem" }}>
-                  ({s.product_count} produk)
-                </span>
-              </span>
-              <strong>{formatRp(s.revenue)}</strong>
-            </div>
-          ))}
         </div>
       </div>
 
-      <div className="row between" style={{ margin: "24px 0 12px" }}>
-        <h3 style={styles.sectionTitle}>Pesanan Terbaru</h3>
-      </div>
-      <div className="card" style={{ overflow: "auto" }}>
-        <table style={styles.table}>
-          <thead>
-            <tr>
-              <th style={styles.th}>ID</th>
-              <th style={styles.th}>Pembeli</th>
-              <th style={styles.th}>Penjual</th>
-              <th style={styles.th}>Total</th>
-              <th style={styles.th}>Status</th>
-              <th style={styles.th}>Tanggal</th>
-            </tr>
-          </thead>
-          <tbody>
-            {recent_orders.map((o) => (
-              <tr key={o.id}>
-                <td style={styles.td}>#{o.id}</td>
-                <td style={styles.td}>{o.buyer_name}</td>
-                <td style={styles.td}>{o.seller_store}</td>
-                <td style={styles.td}>{formatRp(o.total)}</td>
-                <td style={styles.td}>{STATUS_LABEL[o.status] || o.status}</td>
-                <td style={styles.td}>{formatDate(o.created_at)}</td>
-              </tr>
-            ))}
-            {recent_orders.length === 0 && (
-              <tr>
-                <td style={styles.td} colSpan={6}>
-                  Belum ada pesanan.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+      {/* Recent orders table */}
+      <div className="admin-section">
+        <div className="admin-section-header">
+          <h3 className="admin-widget-title" style={{ margin: 0 }}>
+            Pesanan Terbaru
+          </h3>
+        </div>
+        <AdminTable
+          cols={["ID", "Pembeli", "Toko Penjual", "Total", "Status", "Tanggal"]}
+          emptyMsg="Belum ada pesanan."
+          rows={recent_orders.map((o) => [
+            <span className="admin-order-id">#{o.id}</span>,
+            o.buyer_name,
+            o.seller_store,
+            formatRpFull(o.total),
+            <StatusBadge status={o.status} />,
+            formatDate(o.created_at),
+          ])}
+        />
       </div>
     </div>
   );
 }
 
-/* ------------------------------- Penjual -------------------------------- */
+/* ── Penjual ── */
 function PenjualTab() {
   const [sellers, setSellers] = useState(null);
 
   useEffect(() => {
-    adminApi.get("/admin/sellers").then((res) => setSellers(res.data));
+    adminApi
+      .get("/admin/sellers")
+      .then((res) => setSellers(res.data))
+      .catch(() => {});
   }, []);
 
   if (!sellers) return <Loading />;
@@ -252,62 +403,43 @@ function PenjualTab() {
         subtitle="Semua toko yang aktif di Qlapa"
         actions={<ExportButton kind="sellers" label="Export CSV" />}
       />
-      <div className="card" style={{ overflow: "auto" }}>
-        <table style={styles.table}>
-          <thead>
-            <tr>
-              <th style={styles.th}>Toko</th>
-              <th style={styles.th}>Pemilik</th>
-              <th style={styles.th}>Email</th>
-              <th style={styles.th}>Lokasi</th>
-              <th style={styles.th}>Produk</th>
-              <th style={styles.th}>Pesanan</th>
-              <th style={styles.th}>Pendapatan</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sellers.map((s) => (
-              <tr key={s.id}>
-                <td style={styles.td}>
-                  <div className="row gap-8" style={{ alignItems: "center" }}>
-                    <div style={styles.avatarSm}>
-                      {s.store_image_url ? (
-                        <img src={s.store_image_url} style={styles.avatarImg} />
-                      ) : (
-                        "🥥"
-                      )}
-                    </div>
-                    {s.store_name || s.name}
-                  </div>
-                </td>
-                <td style={styles.td}>{s.name}</td>
-                <td style={styles.td}>{s.email}</td>
-                <td style={styles.td}>{s.store_location || "-"}</td>
-                <td style={styles.td}>{s.product_count}</td>
-                <td style={styles.td}>{s.order_count}</td>
-                <td style={styles.td}>{formatRp(s.revenue)}</td>
-              </tr>
-            ))}
-            {sellers.length === 0 && (
-              <tr>
-                <td style={styles.td} colSpan={7}>
-                  Belum ada toko.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <AdminTable
+        cols={[
+          "Toko",
+          "Pemilik",
+          "Email",
+          "Lokasi",
+          "Produk",
+          "Pesanan",
+          "Pendapatan",
+        ]}
+        emptyMsg="Belum ada toko."
+        rows={sellers.map((s) => [
+          <AvatarCell
+            src={s.store_image_url}
+            name={s.store_name || s.name}
+          />,
+          s.name,
+          <span className="admin-email">{s.email}</span>,
+          s.store_location || <span className="admin-empty-cell">—</span>,
+          <span className="admin-number">{s.product_count}</span>,
+          <span className="admin-number">{s.order_count}</span>,
+          <span className="admin-revenue">{formatRp(s.revenue)}</span>,
+        ])}
+      />
     </div>
   );
 }
 
-/* -------------------------------- Produk --------------------------------- */
+/* ── Produk ── */
 function ProdukTab() {
   const [products, setProducts] = useState(null);
 
   useEffect(() => {
-    adminApi.get("/admin/products").then((res) => setProducts(res.data));
+    adminApi
+      .get("/admin/products")
+      .then((res) => setProducts(res.data))
+      .catch(() => {});
   }, []);
 
   if (!products) return <Loading />;
@@ -316,73 +448,40 @@ function ProdukTab() {
     <div>
       <PageHeader
         title="Semua Produk"
-        subtitle="Produk dari seluruh toko di Qlapa"
+        subtitle="Produk dari seluruh toko di platform"
         actions={<ExportButton kind="products" label="Export CSV" />}
       />
-      <div className="card" style={{ overflow: "auto" }}>
-        <table style={styles.table}>
-          <thead>
-            <tr>
-              <th style={styles.th}>Produk</th>
-              <th style={styles.th}>Kategori</th>
-              <th style={styles.th}>Harga</th>
-              <th style={styles.th}>Stok</th>
-              <th style={styles.th}>Penjual</th>
-              <th style={styles.th}>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {products.map((p) => (
-              <tr key={p.id}>
-                <td style={styles.td}>
-                  <div className="row gap-8" style={{ alignItems: "center" }}>
-                    <div style={styles.avatarSm}>
-                      {p.image_url ? (
-                        <img src={p.image_url} style={styles.avatarImg} />
-                      ) : (
-                        "🥥"
-                      )}
-                    </div>
-                    {p.name}
-                  </div>
-                </td>
-                <td style={styles.td}>{p.category}</td>
-                <td style={styles.td}>
-                  {formatRp(p.price)}/{p.unit}
-                </td>
-                <td style={styles.td}>
-                  {p.stock} {p.unit}
-                </td>
-                <td style={styles.td}>{p.seller?.store_name || "-"}</td>
-                <td style={styles.td}>
-                  <span
-                    className={`badge ${p.status === "active" ? "" : "badge-outline"}`}
-                  >
-                    {p.status === "active" ? "Aktif" : "Nonaktif"}
-                  </span>
-                </td>
-              </tr>
-            ))}
-            {products.length === 0 && (
-              <tr>
-                <td style={styles.td} colSpan={6}>
-                  Belum ada produk.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <AdminTable
+        cols={["Produk", "Kategori", "Harga", "Stok", "Penjual", "Status"]}
+        emptyMsg="Belum ada produk."
+        rows={products.map((p) => [
+          <AvatarCell src={p.image_url} name={p.name} />,
+          <span className="admin-category-badge">{p.category}</span>,
+          formatRpFull(p.price) + `/${p.unit}`,
+          <span className={`admin-stock${p.stock <= 5 ? " low" : ""}`}>
+            {p.stock} {p.unit}
+          </span>,
+          p.seller?.store_name || <span className="admin-empty-cell">—</span>,
+          <span
+            className={`admin-status-pill ${p.status === "active" ? "active" : "inactive"}`}
+          >
+            {p.status === "active" ? "Aktif" : "Nonaktif"}
+          </span>,
+        ])}
+      />
     </div>
   );
 }
 
-/* ------------------------------- Pesanan --------------------------------- */
+/* ── Pesanan ── */
 function PesananTab() {
   const [orders, setOrders] = useState(null);
 
   useEffect(() => {
-    adminApi.get("/admin/orders").then((res) => setOrders(res.data));
+    adminApi
+      .get("/admin/orders")
+      .then((res) => setOrders(res.data))
+      .catch(() => {});
   }, []);
 
   if (!orders) return <Loading />;
@@ -394,51 +493,40 @@ function PesananTab() {
         subtitle="Riwayat transaksi seluruh toko"
         actions={<ExportButton kind="orders" label="Export CSV" />}
       />
-      <div className="card" style={{ overflow: "auto" }}>
-        <table style={styles.table}>
-          <thead>
-            <tr>
-              <th style={styles.th}>ID</th>
-              <th style={styles.th}>Pembeli</th>
-              <th style={styles.th}>Penjual</th>
-              <th style={styles.th}>Item</th>
-              <th style={styles.th}>Total</th>
-              <th style={styles.th}>Status</th>
-              <th style={styles.th}>Tanggal</th>
-            </tr>
-          </thead>
-          <tbody>
-            {orders.map((o) => (
-              <tr key={o.id}>
-                <td style={styles.td}>#{o.id}</td>
-                <td style={styles.td}>{o.buyer_name}</td>
-                <td style={styles.td}>{o.seller_store}</td>
-                <td style={styles.td}>{o.items.length} produk</td>
-                <td style={styles.td}>{formatRp(o.total)}</td>
-                <td style={styles.td}>{STATUS_LABEL[o.status] || o.status}</td>
-                <td style={styles.td}>{formatDate(o.created_at)}</td>
-              </tr>
-            ))}
-            {orders.length === 0 && (
-              <tr>
-                <td style={styles.td} colSpan={7}>
-                  Belum ada pesanan.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <AdminTable
+        cols={[
+          "ID",
+          "Pembeli",
+          "Toko Penjual",
+          "Item",
+          "Total",
+          "Status",
+          "Tanggal",
+        ]}
+        emptyMsg="Belum ada pesanan."
+        rows={orders.map((o) => [
+          <span className="admin-order-id">#{o.id}</span>,
+          o.buyer_name,
+          o.seller_store,
+          <span className="admin-number">{(o.items || []).length} produk</span>,
+          <span className="admin-revenue">{formatRpFull(o.total)}</span>,
+          <StatusBadge status={o.status} />,
+          formatDate(o.created_at),
+        ])}
+      />
     </div>
   );
 }
 
-/* ------------------------------- Pengguna --------------------------------- */
+/* ── Pengguna ── */
 function PenggunaTab() {
   const [users, setUsers] = useState(null);
 
   useEffect(() => {
-    adminApi.get("/admin/users").then((res) => setUsers(res.data));
+    adminApi
+      .get("/admin/users")
+      .then((res) => setUsers(res.data))
+      .catch(() => {});
   }, []);
 
   if (!users) return <Loading />;
@@ -450,192 +538,23 @@ function PenggunaTab() {
         subtitle="Seluruh akun yang terdaftar di Qlapa"
         actions={<ExportButton kind="users" label="Export CSV" />}
       />
-      <div className="card" style={{ overflow: "auto" }}>
-        <table style={styles.table}>
-          <thead>
-            <tr>
-              <th style={styles.th}>Nama</th>
-              <th style={styles.th}>Email</th>
-              <th style={styles.th}>Telepon</th>
-              <th style={styles.th}>Peran</th>
-              <th style={styles.th}>Bergabung</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.map((u) => (
-              <tr key={u.id}>
-                <td style={styles.td}>
-                  <div className="row gap-8" style={{ alignItems: "center" }}>
-                    <div style={styles.avatarSm}>
-                      {u.avatar_url ? (
-                        <img src={u.avatar_url} style={styles.avatarImg} />
-                      ) : (
-                        "👤"
-                      )}
-                    </div>
-                    {u.name}
-                  </div>
-                </td>
-                <td style={styles.td}>{u.email}</td>
-                <td style={styles.td}>{u.phone || "-"}</td>
-                <td style={styles.td}>
-                  {u.is_admin ? (
-                    <span className="badge badge-brown">Admin</span>
-                  ) : u.is_seller ? (
-                    <span className="badge">Penjual</span>
-                  ) : (
-                    <span className="badge badge-outline">Pembeli</span>
-                  )}
-                </td>
-                <td style={styles.td}>{formatDate(u.created_at)}</td>
-              </tr>
-            ))}
-            {users.length === 0 && (
-              <tr>
-                <td style={styles.td} colSpan={5}>
-                  Belum ada pengguna.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <AdminTable
+        cols={["Nama", "Email", "Telepon", "Peran", "Bergabung"]}
+        emptyMsg="Belum ada pengguna."
+        rows={users.map((u) => [
+          <AvatarCell src={u.avatar_url} name={u.name} isUser />,
+          <span className="admin-email">{u.email}</span>,
+          u.phone || <span className="admin-empty-cell">—</span>,
+          u.is_admin ? (
+            <span className="admin-role-badge admin">Admin</span>
+          ) : u.is_seller ? (
+            <span className="admin-role-badge seller">Penjual</span>
+          ) : (
+            <span className="admin-role-badge buyer">Pembeli</span>
+          ),
+          formatDate(u.created_at),
+        ])}
+      />
     </div>
   );
 }
-
-function PageHeader({ title, subtitle, actions }) {
-  return (
-    <div className="row between" style={{ marginBottom: 20, alignItems: "flex-start" }}>
-      <div>
-        <h1 style={{ fontSize: "1.4rem", marginBottom: 4 }}>{title}</h1>
-        <p style={{ fontSize: "0.88rem" }}>{subtitle}</p>
-      </div>
-      {actions}
-    </div>
-  );
-}
-
-const styles = {
-  shell: { display: "flex", minHeight: "100vh", background: "var(--cream)" },
-  sidebar: {
-    width: 230,
-    flexShrink: 0,
-    background: "var(--green-900)",
-    padding: "24px 16px",
-    display: "flex",
-    flexDirection: "column",
-    position: "sticky",
-    top: 0,
-    height: "100vh",
-  },
-  sideHead: { display: "flex", alignItems: "center", gap: 10, padding: "0 6px" },
-  logoDot: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    background: "var(--brown-300)",
-    color: "var(--brown-800)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontFamily: "var(--font-display)",
-    fontWeight: 700,
-    flexShrink: 0,
-  },
-  brand: { color: "var(--cream)", fontWeight: 700, fontFamily: "var(--font-display)" },
-  brandSub: { color: "rgba(251,247,239,0.7)", fontSize: "0.72rem" },
-  navItem: {
-    display: "flex",
-    alignItems: "center",
-    gap: 10,
-    width: "100%",
-    padding: "11px 12px",
-    borderRadius: 10,
-    background: "transparent",
-    border: "none",
-    color: "rgba(251,247,239,0.82)",
-    fontSize: "0.88rem",
-    fontWeight: 600,
-    cursor: "pointer",
-    textAlign: "left",
-    marginBottom: 4,
-  },
-  navItemActive: {
-    background: "rgba(251,247,239,0.14)",
-    color: "var(--cream)",
-  },
-  sideFoot: {
-    borderTop: "1px solid rgba(251,247,239,0.15)",
-    paddingTop: 14,
-    marginTop: 14,
-  },
-  logoutBtn: {
-    marginTop: 10,
-    width: "100%",
-    background: "rgba(251,247,239,0.12)",
-    border: "none",
-    color: "var(--cream)",
-    padding: "8px 10px",
-    borderRadius: 8,
-    fontSize: "0.82rem",
-    fontWeight: 600,
-    cursor: "pointer",
-  },
-  main: { flex: 1, padding: "28px 32px", minWidth: 0, overflowX: "auto" },
-  cardGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-    gap: 12,
-    marginBottom: 22,
-  },
-  statCard: { padding: 16 },
-  statValue: {
-    fontFamily: "var(--font-display)",
-    fontSize: "1.5rem",
-    fontWeight: 700,
-    color: "var(--green-800)",
-  },
-  statLabel: { fontSize: "0.78rem", color: "var(--ink-soft)", marginTop: 4 },
-  twoCol: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: 16,
-  },
-  sectionTitle: { fontSize: "1rem", marginBottom: 12 },
-  statusRow: {
-    padding: "8px 0",
-    borderBottom: "1px solid var(--line)",
-    fontSize: "0.88rem",
-  },
-  table: { width: "100%", borderCollapse: "collapse", minWidth: 640 },
-  th: {
-    textAlign: "left",
-    fontSize: "0.75rem",
-    textTransform: "uppercase",
-    letterSpacing: "0.03em",
-    color: "var(--ink-soft)",
-    padding: "12px 14px",
-    borderBottom: "1px solid var(--line)",
-    whiteSpace: "nowrap",
-  },
-  td: {
-    padding: "12px 14px",
-    fontSize: "0.86rem",
-    borderBottom: "1px solid var(--line)",
-    whiteSpace: "nowrap",
-  },
-  avatarSm: {
-    width: 30,
-    height: 30,
-    borderRadius: 8,
-    background: "var(--cream-2)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-    flexShrink: 0,
-    fontSize: "0.9rem",
-  },
-  avatarImg: { width: "100%", height: "100%", objectFit: "cover" },
-};

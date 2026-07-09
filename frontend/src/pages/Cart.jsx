@@ -2,11 +2,28 @@ import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
+import { ShoppingCart, Package, X, LogIn } from "lucide-react";
 
 export default function Cart() {
   const { items, updateQty, removeItem, total } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
+
+  // Guard: harus login
+  if (!user) {
+    return (
+      <div className="section container">
+        <div className="empty-state">
+          <div style={{ color: "var(--ink-soft)", marginBottom: 16 }}><ShoppingCart size={48} strokeWidth={1.5} /></div>
+          <h3>Masuk untuk melihat keranjang</h3>
+          <p style={{ marginTop: 8, color: "var(--ink-soft)" }}>Silakan masuk atau daftar terlebih dahulu untuk menggunakan keranjang belanja.</p>
+          <Link to="/masuk" className="btn btn-primary" style={{ marginTop: 18, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <LogIn size={18} /> Masuk Sekarang
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   const goCheckout = () => {
     if (!user) return navigate("/masuk");
@@ -17,7 +34,7 @@ export default function Cart() {
     return (
       <div className="section container">
         <div className="empty-state">
-          <div style={{ fontSize: "2.4rem", marginBottom: 12 }}>🛒</div>
+          <div style={{ color: "var(--ink-soft)", marginBottom: 16 }}><ShoppingCart size={48} strokeWidth={1.5} /></div>
           <h3>Keranjangmu masih kosong</h3>
           <p style={{ marginTop: 8 }}>Yuk jelajahi limbah kelapa yang bisa kamu manfaatkan.</p>
           <Link to="/produk" className="btn btn-primary" style={{ marginTop: 18 }}>Jelajahi Produk</Link>
@@ -37,7 +54,9 @@ export default function Cart() {
                 {product.image_url ? (
                   <img src={product.image_url} alt={product.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 ) : (
-                  <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "2rem" }}>🥥</div>
+                  <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--ink-soft)" }}>
+                    <Package size={32} strokeWidth={1.5} />
+                  </div>
                 )}
               </div>
               <div style={{ flex: 1 }}>
@@ -54,7 +73,9 @@ export default function Cart() {
               <div style={{ fontWeight: 700, width: 120, textAlign: "right", fontSize: "1.05rem", color: "var(--ink)" }}>
                 Rp{(product.price * qty).toLocaleString("id-ID")}
               </div>
-              <button className="btn btn-ghost" style={{ color: "var(--danger)", padding: 8, borderRadius: "50%" }} onClick={() => removeItem(product.id)}>✕</button>
+              <button className="btn btn-ghost" style={{ color: "var(--danger)", padding: 8, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }} onClick={() => removeItem(product.id)}>
+                <X size={18} strokeWidth={2.5} />
+              </button>
             </div>
           ))}
         </div>

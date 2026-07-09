@@ -2,6 +2,7 @@ import React, { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api.js";
 import { useToast } from "../context/ToastContext.jsx";
+import { Camera, X, RefreshCcw, Sparkles } from "lucide-react";
 
 const CATEGORIES = ["Ampas", "Tempurung", "Sabut", "Daun", "Air Kelapa"];
 const CONDITIONS = ["Kering", "Segar"];
@@ -186,7 +187,7 @@ export default function AddProduct() {
                 transition: "all 0.2s ease"
               }}
             >
-              <div style={{ fontSize: "2.4rem", marginBottom: 4 }}>📸</div>
+              <div style={{ marginBottom: 8, color: "var(--ink-soft)" }}><Camera size={48} strokeWidth={1.5} /></div>
               <strong style={{ color: "var(--brown-500)", fontSize: "0.95rem" }}>
                 Klik untuk pilih foto
               </strong>
@@ -227,20 +228,22 @@ export default function AddProduct() {
                   className="btn btn-ghost btn-sm"
                   onClick={removeImage}
                   disabled={analyzing}
+                  style={{ display: "flex", alignItems: "center", gap: 6 }}
                 >
-                  ✕ Ganti Foto
+                  <X size={14} /> Ganti Foto
                 </button>
                 <button
                   type="button"
                   className="btn btn-primary btn-sm"
                   onClick={analyzeImage}
                   disabled={analyzing}
+                  style={{ display: "flex", alignItems: "center", gap: 6 }}
                 >
                   {analyzing
                     ? "Menganalisis foto…"
                     : analyzed
-                      ? "🔁 Analisis Ulang"
-                      : "✨ Analisis Foto dengan Qlapa AI"}
+                      ? <><RefreshCcw size={14} /> Analisis Ulang</>
+                      : <><Sparkles size={14} /> Analisis Foto dengan Qlapa AI</>}
                 </button>
               </div>
 
