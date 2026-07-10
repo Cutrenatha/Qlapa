@@ -28,7 +28,7 @@ midtrans_snap = midtransclient.Snap(
     client_key=os.environ.get("MIDTRANS_CLIENT_KEY")
 )
 
-from models import db, User, Product, Order, OrderItem, ChatMessage, Review
+from models import db, User, Product, Order, OrderItem, ChatMessage, Review, CartItem, AIChatSession
 from ai_engine import (
     ai_suggest_product_fields,
     analyze_product_image,
@@ -411,6 +411,7 @@ def analyze_product_image_route():
             "quality": result.get("quality"),
             "notes": result.get("notes", ""),
             "stock_estimate": result.get("stock_estimate"),
+            "price_estimate": result.get("price_estimate"),
             "ai_description": result["ai_description"],
             "confidence": result.get("confidence"),
             "low_confidence": result.get("low_confidence", False),
@@ -823,6 +824,110 @@ def ai_recommendation():
     if not category:
         return jsonify({"error": "Parameter category wajib diisi"}), 400
     return jsonify({"recommendation": get_recommendation(category)})
+
+
+# ---------------------------------------------------------------------------
+# Cart Sync Endpoints
+# ---------------------------------------------------------------------------
+@app.get("/api/cart")
+@jwt_required()
+def get_cart():
+    user = current_user()
+    items = CartItem.query.filter_by(user_id=user.id).all()
+    valid_items = [i.to_dict() for i in items if i.product is not None]
+    return jsonify(valid_items)
+
+
+@app.post("/api/cart/sync")
+@jwt_required()
+def sync_cart():
+    user = current_user()
+    data = request.get_json(force=True)
+    items_data = data.get("items", [])
+    
+    active_product_ids = []
+    for item in items_data:
+        prod = item.get("product")
+        if isinstance(prod, dict):
+            pid = int(prod["id"])
+        else:
+            pid = int(item.get("product_id"))
+        qty = float(item.get("qty", 1.0))
+        selected = bool(item.get("selected", True))
+        
+        active_product_ids.append(pid)
+        
+        existing = CartItem.query.filter_by(user_id=user.id, product_id=pid).first()
+        if existing:
+            existing.qty = qty
+            existing.selected = selected
+        else:
+            cart_item = CartItem(
+                user_id=user.id,
+                product_id=pid,
+                qty=qty,
+                selected=selected
+            )
+            db.session.add(cart_item)
+            
+    # Delete cart items that are not in the payload
+    CartItem.query.filter(
+        CartItem.user_id == user.id,
+        ~CartItem.product_id.in_(active_product_ids)
+    ).delete(synchronize_session=False)
+    
+    db.session.commit()
+    return jsonify({"status": "success"})
+
+
+# ---------------------------------------------------------------------------
+# AI Chat Sessions Endpoints
+# ---------------------------------------------------------------------------
+@app.get("/api/ai/chat/sessions")
+@jwt_required()
+def get_ai_sessions():
+    user = current_user()
+    sessions = AIChatSession.query.filter_by(user_id=user.id).order_by(AIChatSession.updated_at.desc()).all()
+    return jsonify([s.to_dict() for s in sessions])
+
+
+@app.post("/api/ai/chat/sessions")
+@jwt_required()
+def sync_ai_sessions():
+    user = current_user()
+    data = request.get_json(force=True)
+    sessions_data = data.get("sessions", [])
+    
+    active_ids = []
+    for s in sessions_data:
+        sid = str(s["id"])
+        active_ids.append(sid)
+        
+        existing = AIChatSession.query.filter_by(user_id=user.id, id=sid).first()
+        import json
+        title = s.get("title", "Sesi Baru")
+        messages = json.dumps(s.get("messages", []))
+        
+        if existing:
+            existing.title = title
+            existing.messages = messages
+        else:
+            session = AIChatSession(
+                id=sid,
+                user_id=user.id,
+                title=title,
+                messages=messages
+            )
+            db.session.add(session)
+            
+    # Delete sessions not in payload
+    AIChatSession.query.filter(
+        AIChatSession.user_id == user.id,
+        ~AIChatSession.id.in_(active_ids)
+    ).delete(synchronize_session=False)
+    
+    db.session.commit()
+    return jsonify({"status": "success"})
 
 
 # ---------------------------------------------------------------------------

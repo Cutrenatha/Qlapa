@@ -6,6 +6,7 @@ import {
   Store, MapPin, FileText, ArrowRight, ArrowLeft, Check,
   Sparkles, Lock, User, Phone, Package, ShieldCheck, Zap
 } from "lucide-react";
+import "./Auth.css";
 
 const STEPS = [
   { id: 1, label: "Informasi Toko" },
@@ -17,18 +18,6 @@ export default function OpenStore() {
   const { user, openStore } = useAuth();
   const { showToast } = useToast();
   const navigate = useNavigate();
-
-  const [windowWidth, setWindowWidth] = useState(
-    typeof window !== "undefined" ? window.innerWidth : 1024
-  );
-
-  useEffect(() => {
-    const handleResize = () => setWindowWidth(window.innerWidth);
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
-  const isDesktop = windowWidth >= 900;
 
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({
@@ -344,73 +333,79 @@ export default function OpenStore() {
     </>
   );
 
-  /* ---- DESKTOP SPLIT LAYOUT ---- */
-  if (isDesktop) {
-    return (
-      <div style={s.desktopShell}>
-        {/* Left: branding panel */}
-        <div style={s.leftPane}>
-          <div style={s.leftContent}>
-            <Link to="/" style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6, marginBottom: 56 }}>
-              <img src="/assets/qlapa-logo.png" alt="Qlapa" style={{ height: 30, filter: "brightness(0) invert(1)" }} />
+  return (
+    <div className="auth-page">
+      <style>{`
+        @media (max-width: 768px) {
+          .open-store-features {
+            display: none !important;
+          }
+        }
+      `}</style>
+
+      {/* Left: branding panel with image background */}
+      <div
+        className="auth-panel auth-panel--image"
+        style={{ backgroundImage: "url('/assets/klapa.png')" }}
+      >
+        <div className="auth-panel-overlay" />
+        <div
+          className="auth-panel-content"
+          style={{ display: "flex", flexDirection: "column", justifyContent: "flex-start", gap: 40 }}
+        >
+          <div>
+            <Link to="/" style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6, marginBottom: 40 }}>
+              <img src="/assets/qlapa-logo.png" alt="Qlapa" className="auth-logo-img" />
               <span style={{ fontSize: "0.78rem", fontWeight: 700, letterSpacing: "0.12em", color: "rgba(255,255,255,0.7)", textTransform: "uppercase" }}>Hub</span>
             </Link>
 
-            <h1 style={s.leftHeading}>Buka Toko Limbah Kelapa Anda</h1>
-            <p style={s.leftSub}>
+            <h2 style={{ fontSize: "2.2rem", fontWeight: 400, lineHeight: 1.05, color: "#fff", marginBottom: 16 }}>
+              Buka Toko Limbah Kelapa Anda
+            </h2>
+            <p style={{ fontSize: "0.92rem", color: "rgba(255, 255, 255, 0.72)", lineHeight: 1.3, maxWidth: 320 }}>
               Bergabunglah dengan ratusan pemasok di Qlapa Hub. Pasarkan tempurung, sabut, ampas, dan daun kelapa secara luas dan digital.
             </p>
+          </div>
 
-            <div style={{ display: "grid", gap: 24, marginTop: 8 }}>
-              {[
-                {
-                  Icon: Zap,
-                  title: "Analisis Foto AI Otomatis",
-                  desc: "Unggah foto limbah kelapa Anda, AI kami akan menganalisis nama, jenis, dan estimasi stok secara instan.",
-                },
-                {
-                  Icon: ShieldCheck,
-                  title: "Sistem Rekening Bersama (Escrow)",
-                  desc: "Pembayaran dari pembeli disimpan aman oleh platform hingga produk sampai ke alamat tujuan.",
-                },
-              ].map(({ Icon, title, desc }) => (
-                <div key={title} style={s.featureItem}>
-                  <div style={s.featureIcon}>
-                    <Icon size={18} color="rgba(255,255,255,0.9)" strokeWidth={1.8} />
-                  </div>
-                  <div>
-                    <p style={s.featureTitle}>{title}</p>
-                    <p style={s.featureDesc}>{desc}</p>
-                  </div>
+          {/* Features list inside left panel - hidden on small screen by custom CSS */}
+          <div className="open-store-features" style={{ display: "flex", flexDirection: "column", gap: 20, marginTop: 24 }}>
+            {[
+              {
+                Icon: Zap,
+                title: "Analisis Foto AI Otomatis",
+                desc: "Unggah foto limbah kelapa Anda, AI kami akan menganalisis nama, jenis, dan estimasi stok secara instan.",
+              },
+              {
+                Icon: ShieldCheck,
+                title: "Sistem Rekening Bersama (Escrow)",
+                desc: "Pembayaran dari pembeli disimpan aman oleh platform hingga produk sampai ke alamat tujuan.",
+              },
+            ].map(({ Icon, title, desc }) => (
+              <div key={title} style={s.featureItem}>
+                <div style={s.featureIcon}>
+                  <Icon size={18} color="rgba(255,255,255,0.9)" strokeWidth={1.8} />
                 </div>
-              ))}
-            </div>
+                <div>
+                  <p style={{ ...s.featureTitle, fontFamily: "inherit" }}>{title}</p>
+                  <p style={s.featureDesc}>{desc}</p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
+      </div>
 
-        {/* Right: form panel */}
-        <div style={s.rightPane}>
-          <div style={s.rightPaneTop}>
+      {/* Right: form panel */}
+      <div className="auth-panel auth-panel--form" style={{ display: "flex", flexDirection: "column", minHeight: "100vh", overflowY: "auto", boxSizing: "border-box" }}>
+        <div style={{ width: "100%", maxWidth: 420, display: "flex", flexDirection: "column" }}>
+          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
             {backLink}
           </div>
-          <div style={s.rightPaneScroll}>
+          <div style={{ flex: 1 }}>
             {wizard}
           </div>
         </div>
       </div>
-    );
-  }
-
-  /* ---- MOBILE LAYOUT ---- */
-  return (
-    <div style={s.mobilePage}>
-      <header style={s.mobileHeader}>
-        <Link to="/" style={{ display: "flex", alignItems: "center" }}>
-          <img src="/assets/qlapa-logo.png" alt="Qlapa" style={{ height: 28, width: "auto" }} />
-        </Link>
-        {backLink}
-      </header>
-      {wizard}
     </div>
   );
 }
@@ -477,7 +472,7 @@ const s = {
   },
   featureDesc: {
     fontSize: "0.8rem",
-    lineHeight: 1.5,
+    lineHeight: 1.3,
     color: "rgba(255,255,255,0.6)",
     margin: 0,
   },

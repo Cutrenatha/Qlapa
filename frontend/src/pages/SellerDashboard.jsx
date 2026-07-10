@@ -261,7 +261,7 @@ function DashboardShell() {
       <div className="dashboard-topbar">
         <div>
           <h1 className="dashboard-title">
-            {(tab === "beranda" || tab === "toko") && (data.store?.name || "Toko Saya")}
+            {(tab === "beranda" || tab === "toko") && (user?.store_name || data.store?.name || "Toko Saya")}
             {tab === "produk"  && "Produk Saya"}
             {tab === "pesanan" && "Pemesanan"}
           </h1>
@@ -309,6 +309,7 @@ function DashboardShell() {
 /* ── Beranda Tab ── */
 function BerandaTab({ data }) {
   const { store, summary, orders } = data;
+  const { user } = useAuth();
   const pendingOrders = orders.filter((o) => o.status === "menunggu_konfirmasi");
 
   return (
@@ -387,11 +388,19 @@ function BerandaTab({ data }) {
         <div className="dashboard-card">
           <p className="dashboard-card-label">Profil Toko</p>
           <div className="dashboard-store-info">
-            <div className="dashboard-store-avatar">
-              <Store size={24} strokeWidth={1.8} />
+            <div className="dashboard-store-avatar" style={{ overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              {user?.store_image_url ? (
+                <img
+                  src={user.store_image_url}
+                  alt="Logo Toko"
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                />
+              ) : (
+                <Store size={24} strokeWidth={1.8} />
+              )}
             </div>
             <div className="dashboard-store-name-wrap">
-              <p className="dashboard-store-name">{store.name}</p>
+              <p className="dashboard-store-name">{user?.store_name || store.name}</p>
               <div className="dashboard-store-rating-row">
                 {store.rating != null ? (
                   <>
@@ -414,7 +423,7 @@ function BerandaTab({ data }) {
           <div className="dashboard-store-meta-list">
             <div className="dashboard-store-meta-item">
               <MapPin size={14} />
-              <span>{store.location || "Lokasi belum diisi"}</span>
+              <span>{user?.store_location || store.location || "Lokasi belum diisi"}</span>
             </div>
             <div className="dashboard-store-meta-item">
               <Calendar size={14} />
@@ -426,8 +435,8 @@ function BerandaTab({ data }) {
             </div>
           </div>
 
-          {store.description && (
-            <p className="dashboard-store-desc">{store.description}</p>
+          {(user?.store_description || store.description) && (
+            <p className="dashboard-store-desc">{user?.store_description || store.description}</p>
           )}
 
           <div className="dashboard-centered-footer">

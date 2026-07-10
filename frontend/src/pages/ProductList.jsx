@@ -1,9 +1,70 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import api from "../api.js";
+import { useAuth } from "../context/AuthContext.jsx";
 import {
   MapPin, Package, Search, SlidersHorizontal, X, ChevronDown, Clock
 } from "lucide-react";
+
+// Predefined coordinates for major Indonesian cities/regions
+const LOCATION_COORDINATES = {
+  jakarta: [-6.2088, 106.8456],
+  surabaya: [-7.2575, 112.7521],
+  bandung: [-6.9175, 107.6191],
+  medan: [3.5952, 98.6722],
+  semarang: [-6.9667, 110.4167],
+  makassar: [-5.1477, 119.4327],
+  palembang: [-2.9761, 104.7754],
+  padang: [-0.9471, 100.4172],
+  manado: [1.4748, 124.8428],
+  lombok: [-8.5806, 116.3249],
+  ntb: [-8.5806, 116.3249],
+  aceh: [5.5483, 95.3238],
+  yogyakarta: [-7.7956, 110.3695],
+  solo: [-7.5755, 110.8243],
+  surakarta: [-7.5755, 110.8243],
+  bali: [-8.6705, 115.2126],
+  denpasar: [-8.6705, 115.2126],
+  balikpapan: [-1.2379, 116.8529],
+  samarinda: [-0.5016, 117.1537],
+  pontianak: [-0.0263, 109.3425],
+  banjarmasin: [-3.3167, 114.5900],
+  pekanbaru: [0.5071, 101.4478],
+  jambi: [-1.6101, 103.6131],
+  bengkulu: [-3.7928, 102.2608],
+  lampung: [-5.3971, 105.2668],
+  kupang: [-10.1772, 123.6070],
+  ambon: [-3.6554, 128.1906],
+  jayapura: [-2.5916, 140.7178],
+};
+
+function getCoordinates(locStr) {
+  if (!locStr) return null;
+  const lower = locStr.toLowerCase();
+  for (const key in LOCATION_COORDINATES) {
+    if (lower.includes(key)) {
+      return LOCATION_COORDINATES[key];
+    }
+  }
+  return [-2.5489, 118.0149]; // Center of Indonesia fallback
+}
+
+function getDistanceKm(coords1, coords2) {
+  if (!coords1 || !coords2) return Infinity;
+  const [lat1, lon1] = coords1;
+  const [lat2, lon2] = coords2;
+  const R = 6371; // Radius of the Earth in km
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c; // Distance in km
+}
 
 /* ─── Static demo data (used when no backend products exist) ─── */
 const STATIC_PRODUCTS = [
@@ -135,16 +196,34 @@ function timeAgo(dateStr) {
 }
 
 export default function ProductList() {
+  const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [apiProducts, setApiProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState(searchParams.get("q") || "");
   const [inputQ, setInputQ] = useState(searchParams.get("q") || "");
-  const [condition, setCondition] = useState(searchParams.get("condition") || "");
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [sort, setSort] = useState("newest");
   const [showFilters, setShowFilters] = useState(false);
+
+  // Multi-select state variables
+  const [selectedConditions, setSelectedConditions] = useState(
+    searchParams.get("condition") ? [searchParams.get("condition")] : []
+  );
+  const [selectedRegions, setSelectedRegions] = useState([]);
+  const [selectedCategories, setSelectedCategories] = useState([]);
+  const [selectedLocations, setSelectedLocations] = useState([]);
+
+  // Derived state/helper for condition tabs compatibility
+  const condition = selectedConditions.length === 1 ? selectedConditions[0] : "";
+  const setCondition = (condValue) => {
+    if (condValue === "") {
+      setSelectedConditions([]);
+    } else {
+      setSelectedConditions([condValue]);
+    }
+  };
 
   useEffect(() => {
     api.get("/products")
@@ -155,6 +234,26 @@ export default function ProductList() {
 
   /* merge: prefer api products, fall back to static */
   const allProducts = apiProducts.length > 0 ? apiProducts : STATIC_PRODUCTS;
+
+  // Resolve user address coordinates once
+  const userCoords = useMemo(() => {
+    return getCoordinates(user?.address || "Jakarta");
+  }, [user?.address]);
+
+  // Extract unique categories and locations
+  const categoriesList = useMemo(() => {
+    const cats = allProducts
+      .map((p) => p.category)
+      .filter((cat) => cat && cat.trim() !== "");
+    return Array.from(new Set(cats));
+  }, [allProducts]);
+
+  const locationsList = useMemo(() => {
+    const locs = allProducts
+      .map((p) => p.seller?.store_location || p.location)
+      .filter((loc) => loc && loc.trim() !== "");
+    return Array.from(new Set(locs));
+  }, [allProducts]);
 
   const filtered = useMemo(() => {
     let list = [...allProducts];
@@ -168,11 +267,41 @@ export default function ProductList() {
           p.description?.toLowerCase().includes(lower)
       );
     }
-    if (condition) {
-      list = list.filter((p) => p.condition === condition);
+    
+    // Multi-select condition filter
+    if (selectedConditions.length > 0) {
+      list = list.filter((p) => selectedConditions.includes(p.condition));
     }
+
     if (minPrice) list = list.filter((p) => Number(p.price) >= Number(minPrice));
     if (maxPrice) list = list.filter((p) => Number(p.price) <= Number(maxPrice));
+
+    // Multi-select category filter
+    if (selectedCategories.length > 0) {
+      list = list.filter((p) => selectedCategories.includes(p.category));
+    }
+
+    // Multi-select location filter
+    if (selectedLocations.length > 0) {
+      list = list.filter((p) => {
+        const loc = p.seller?.store_location || p.location;
+        return selectedLocations.includes(loc);
+      });
+    }
+
+    // Multi-select region filter (Terdekat / Terjauh)
+    if (selectedRegions.length > 0) {
+      const showNearest = selectedRegions.includes("Terdekat");
+      const showFarthest = selectedRegions.includes("Terjauh");
+      
+      if (showNearest !== showFarthest) {
+        list = list.filter((p) => {
+          const loc = p.seller?.store_location || p.location;
+          const dist = getDistanceKm(userCoords, getCoordinates(loc));
+          return showNearest ? dist <= 750 : dist > 750;
+        });
+      }
+    }
 
     // Sort
     if (sort === "newest") {
@@ -186,7 +315,7 @@ export default function ProductList() {
     }
 
     return list;
-  }, [allProducts, q, condition, minPrice, maxPrice, sort]);
+  }, [allProducts, q, selectedConditions, minPrice, maxPrice, selectedCategories, selectedLocations, selectedRegions, userCoords, sort]);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -195,14 +324,17 @@ export default function ProductList() {
 
   const clearFilter = (key) => {
     if (key === "q") { setQ(""); setInputQ(""); }
-    if (key === "condition") setCondition("");
+    if (key === "conditions" || key === "condition") setSelectedConditions([]);
     if (key === "minPrice") setMinPrice("");
     if (key === "maxPrice") setMaxPrice("");
+    if (key === "categories") setSelectedCategories([]);
+    if (key === "locations") setSelectedLocations([]);
+    if (key === "regions") setSelectedRegions([]);
   };
 
   const activeFiltersCount = [
-    condition, minPrice, maxPrice
-  ].filter(Boolean).length;
+    minPrice, maxPrice
+  ].filter(Boolean).length + selectedCategories.length + selectedLocations.length + selectedConditions.length + selectedRegions.length;
 
   return (
     <div style={{ background: "var(--cream)", minHeight: "100vh" }}>
@@ -282,30 +414,199 @@ export default function ProductList() {
           {/* Expandable Filter Panel */}
           {showFilters && (
             <div style={{
-              display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center",
-              padding: "16px 20px", marginBottom: 20,
-              background: "var(--cream)", borderRadius: 14,
+              display: "flex", flexDirection: "column", gap: 20,
+              padding: "24px", marginBottom: 20,
+              background: "#fff", borderRadius: 16,
               border: "1.5px solid var(--line)",
+              boxShadow: "var(--shadow-sm)",
               animation: "fadeInDown 0.2s ease",
             }}>
-              <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--ink-soft)", letterSpacing: "0.05em", textTransform: "uppercase" }}>Harga</span>
-              <input
-                type="number" placeholder="Min"
-                value={minPrice} onChange={(e) => setMinPrice(e.target.value)}
-                style={{ width: 110, padding: "8px 12px", borderRadius: 10, border: "1.5px solid var(--line)", fontSize: "0.88rem", outline: "none" }}
-              />
-              <span style={{ color: "var(--ink-soft)", fontSize: "0.85rem" }}>–</span>
-              <input
-                type="number" placeholder="Maks"
-                value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)}
-                style={{ width: 110, padding: "8px 12px", borderRadius: 10, border: "1.5px solid var(--line)", fontSize: "0.88rem", outline: "none" }}
-              />
-              {(minPrice || maxPrice) && (
-                <button onClick={() => { setMinPrice(""); setMaxPrice(""); }}
-                  style={{ background: "none", border: "none", color: "var(--ink-soft)", cursor: "pointer", fontSize: "0.82rem", display: "flex", alignItems: "center", gap: 4 }}>
-                  <X size={13} /> Reset harga
-                </button>
-              )}
+              {/* Row 1: Harga */}
+              <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+                <span style={{ minWidth: 100, fontSize: "0.8rem", fontWeight: 700, color: "var(--ink-soft)", letterSpacing: "0.05em", textTransform: "uppercase" }}>Harga</span>
+                <input
+                  type="number" placeholder="Min"
+                  value={minPrice} onChange={(e) => setMinPrice(e.target.value)}
+                  style={{ width: 130, padding: "8px 14px", borderRadius: 10, border: "1.5px solid var(--line)", fontSize: "0.88rem", outline: "none" }}
+                />
+                <span style={{ color: "var(--ink-soft)", fontSize: "0.85rem" }}>–</span>
+                <input
+                  type="number" placeholder="Maks"
+                  value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)}
+                  style={{ width: 130, padding: "8px 14px", borderRadius: 10, border: "1.5px solid var(--line)", fontSize: "0.88rem", outline: "none" }}
+                />
+                {(minPrice || maxPrice) && (
+                  <button onClick={() => { setMinPrice(""); setMaxPrice(""); }}
+                    style={{ background: "none", border: "none", color: "var(--danger)", cursor: "pointer", fontSize: "0.82rem", display: "flex", alignItems: "center", gap: 4, padding: "4px 8px" }}>
+                    <X size={13} /> Reset Harga
+                  </button>
+                )}
+              </div>
+
+              {/* Row 2: Kategori Produk */}
+              <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-start" }}>
+                <span style={{ minWidth: 100, paddingTop: 6, fontSize: "0.8rem", fontWeight: 700, color: "var(--ink-soft)", letterSpacing: "0.05em", textTransform: "uppercase" }}>Kategori Produk</span>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", flex: 1 }}>
+                  {categoriesList.map((cat) => {
+                    const isSelected = selectedCategories.includes(cat);
+                    return (
+                      <button
+                        key={cat}
+                        onClick={() => {
+                          setSelectedCategories(prev =>
+                            prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]
+                          );
+                        }}
+                        style={{
+                          padding: "6px 14px",
+                          borderRadius: 999,
+                          border: `1.5px solid ${isSelected ? "var(--ink)" : "var(--line)"}`,
+                          background: isSelected ? "var(--ink)" : "transparent",
+                          color: isSelected ? "#fff" : "var(--ink-soft)",
+                          fontSize: "0.82rem",
+                          fontWeight: 600,
+                          cursor: "pointer",
+                          transition: "all 0.2s"
+                        }}
+                      >
+                        {cat}
+                      </button>
+                    );
+                  })}
+                  {selectedCategories.length > 0 && (
+                    <button onClick={() => setSelectedCategories([])}
+                      style={{ background: "none", border: "none", color: "var(--danger)", cursor: "pointer", fontSize: "0.82rem", padding: "6px 8px" }}>
+                      Reset
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Row 3: Wilayah */}
+              <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-start" }}>
+                <span style={{ minWidth: 100, paddingTop: 6, fontSize: "0.8rem", fontWeight: 700, color: "var(--ink-soft)", letterSpacing: "0.05em", textTransform: "uppercase" }}>Wilayah</span>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", flex: 1 }}>
+                  {["Terdekat", "Terjauh"].map((reg) => {
+                    const isSelected = selectedRegions.includes(reg);
+                    return (
+                      <button
+                        key={reg}
+                        onClick={() => {
+                          setSelectedRegions(prev =>
+                            prev.includes(reg) ? prev.filter(r => r !== reg) : [...prev, reg]
+                          );
+                        }}
+                        style={{
+                          padding: "6px 14px",
+                          borderRadius: 999,
+                          border: `1.5px solid ${isSelected ? "var(--ink)" : "var(--line)"}`,
+                          background: isSelected ? "var(--ink)" : "transparent",
+                          color: isSelected ? "#fff" : "var(--ink-soft)",
+                          fontSize: "0.82rem",
+                          fontWeight: 600,
+                          cursor: "pointer",
+                          transition: "all 0.2s"
+                        }}
+                      >
+                        {reg}
+                      </button>
+                    );
+                  })}
+                  {selectedRegions.length > 0 && (
+                    <button onClick={() => setSelectedRegions([])}
+                      style={{ background: "none", border: "none", color: "var(--danger)", cursor: "pointer", fontSize: "0.82rem", padding: "6px 8px" }}>
+                      Reset
+                    </button>
+                  )}
+                  {user?.address ? (
+                    <span style={{ fontSize: "0.78rem", color: "var(--ink-soft)", alignSelf: "center", marginLeft: 8 }}>
+                      📍 Profil: {user.address.length > 35 ? user.address.substring(0, 35) + "..." : user.address}
+                    </span>
+                  ) : (
+                    <span style={{ fontSize: "0.78rem", color: "var(--danger)", alignSelf: "center", marginLeft: 8 }}>
+                      ⚠️ Belum ada alamat di profil, menggunakan lokasi default.
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Row 4: Kondisi */}
+              <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-start" }}>
+                <span style={{ minWidth: 100, paddingTop: 6, fontSize: "0.8rem", fontWeight: 700, color: "var(--ink-soft)", letterSpacing: "0.05em", textTransform: "uppercase" }}>Kondisi</span>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", flex: 1 }}>
+                  {["Segar", "Kering"].map((cond) => {
+                    const isSelected = selectedConditions.includes(cond);
+                    return (
+                      <button
+                        key={cond}
+                        onClick={() => {
+                          setSelectedConditions(prev =>
+                            prev.includes(cond) ? prev.filter(c => c !== cond) : [...prev, cond]
+                          );
+                        }}
+                        style={{
+                          padding: "6px 14px",
+                          borderRadius: 999,
+                          border: `1.5px solid ${isSelected ? "var(--ink)" : "var(--line)"}`,
+                          background: isSelected ? "var(--ink)" : "transparent",
+                          color: isSelected ? "#fff" : "var(--ink-soft)",
+                          fontSize: "0.82rem",
+                          fontWeight: 600,
+                          cursor: "pointer",
+                          transition: "all 0.2s"
+                        }}
+                      >
+                        {cond}
+                      </button>
+                    );
+                  })}
+                  {selectedConditions.length > 0 && (
+                    <button onClick={() => setSelectedConditions([])}
+                      style={{ background: "none", border: "none", color: "var(--danger)", cursor: "pointer", fontSize: "0.82rem", padding: "6px 8px" }}>
+                      Reset
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Row 5: Lokasi */}
+              <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-start" }}>
+                <span style={{ minWidth: 100, paddingTop: 6, fontSize: "0.8rem", fontWeight: 700, color: "var(--ink-soft)", letterSpacing: "0.05em", textTransform: "uppercase" }}>Lokasi</span>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", flex: 1 }}>
+                  {locationsList.map((loc) => {
+                    const isSelected = selectedLocations.includes(loc);
+                    return (
+                      <button
+                        key={loc}
+                        onClick={() => {
+                          setSelectedLocations(prev =>
+                            prev.includes(loc) ? prev.filter(l => l !== loc) : [...prev, loc]
+                          );
+                        }}
+                        style={{
+                          padding: "6px 14px",
+                          borderRadius: 999,
+                          border: `1.5px solid ${isSelected ? "var(--ink)" : "var(--line)"}`,
+                          background: isSelected ? "var(--ink)" : "transparent",
+                          color: isSelected ? "#fff" : "var(--ink-soft)",
+                          fontSize: "0.82rem",
+                          fontWeight: 600,
+                          cursor: "pointer",
+                          transition: "all 0.2s"
+                        }}
+                      >
+                        {loc}
+                      </button>
+                    );
+                  })}
+                  {selectedLocations.length > 0 && (
+                    <button onClick={() => setSelectedLocations([])}
+                      style={{ background: "none", border: "none", color: "var(--danger)", cursor: "pointer", fontSize: "0.82rem", padding: "6px 8px" }}>
+                      Reset
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 
@@ -344,19 +645,28 @@ export default function ProductList() {
 
       {/* ── Active Filters Chips ── */}
       <div className="container">
-        {(q || condition || minPrice || maxPrice) && (
+        {(q || minPrice || maxPrice || selectedConditions.length > 0 || selectedRegions.length > 0 || selectedCategories.length > 0 || selectedLocations.length > 0) && (
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", paddingTop: 16 }}>
             {q && (
               <Chip label={`Pencarian: "${q}"`} onRemove={() => clearFilter("q")} />
             )}
-            {condition && (
-              <Chip label={`Kondisi: ${condition}`} onRemove={() => clearFilter("condition")} />
+            {selectedConditions.length > 0 && (
+              <Chip label={`Kondisi: ${selectedConditions.join(", ")}`} onRemove={() => clearFilter("conditions")} />
             )}
             {minPrice && (
               <Chip label={`Min: Rp${Number(minPrice).toLocaleString("id-ID")}`} onRemove={() => clearFilter("minPrice")} />
             )}
             {maxPrice && (
               <Chip label={`Maks: Rp${Number(maxPrice).toLocaleString("id-ID")}`} onRemove={() => clearFilter("maxPrice")} />
+            )}
+            {selectedCategories.length > 0 && (
+              <Chip label={`Kategori: ${selectedCategories.join(", ")}`} onRemove={() => clearFilter("categories")} />
+            )}
+            {selectedRegions.length > 0 && (
+              <Chip label={`Wilayah: ${selectedRegions.join(", ")}`} onRemove={() => clearFilter("regions")} />
+            )}
+            {selectedLocations.length > 0 && (
+              <Chip label={`Lokasi: ${selectedLocations.join(", ")}`} onRemove={() => clearFilter("locations")} />
             )}
           </div>
         )}

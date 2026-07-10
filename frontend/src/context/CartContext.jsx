@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { useAuth } from "./AuthContext.jsx";
+import api from "../api.js";
 
 const CartContext = createContext(null);
 
@@ -11,31 +12,53 @@ export function CartProvider({ children }) {
   const { user } = useAuth();
   const [items, setItems] = useState([]);
 
-  // Load cart
+  // Load cart from backend (fallback to localStorage)
   useEffect(() => {
     const key = getCartKey(user?.id);
     if (!key) {
       setItems([]);
       return;
     }
-    try {
-      const stored = JSON.parse(localStorage.getItem(key) || "[]");
-      // Ensure all items have a selected property (default to true)
-      const sanitized = stored.map(item => ({
-        ...item,
-        selected: item.selected !== undefined ? item.selected : true
-      }));
-      setItems(sanitized);
-    } catch {
-      setItems([]);
-    }
+    
+    // Attempt backend load
+    api.get("/cart")
+      .then((res) => {
+        const sanitized = res.data.map(item => ({
+          ...item,
+          selected: item.selected !== undefined ? item.selected : true
+        }));
+        setItems(sanitized);
+        localStorage.setItem(key, JSON.stringify(sanitized));
+      })
+      .catch((err) => {
+        console.error("Failed to load cart from backend, using localStorage fallback:", err);
+        try {
+          const stored = JSON.parse(localStorage.getItem(key) || "[]");
+          const sanitized = stored.map(item => ({
+            ...item,
+            selected: item.selected !== undefined ? item.selected : true
+          }));
+          setItems(sanitized);
+        } catch {
+          setItems([]);
+        }
+      });
   }, [user?.id]);
 
-  // Save cart
+  // Save cart to backend and localStorage
   useEffect(() => {
     const key = getCartKey(user?.id);
     if (!key) return;
+    
+    // Save locally
     localStorage.setItem(key, JSON.stringify(items));
+    
+    // Sync to backend
+    const token = localStorage.getItem("qlapa_token");
+    if (token) {
+      api.post("/cart/sync", { items })
+        .catch((err) => console.error("Failed to sync cart with backend:", err));
+    }
   }, [items, user?.id]);
 
   const addItem = (product, qty = 1) => {

@@ -3,14 +3,14 @@ import { Link } from "react-router-dom";
 
 function IconFacebook() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
       <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
     </svg>
   );
 }
 function IconInstagram() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
       <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
       <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
@@ -19,7 +19,7 @@ function IconInstagram() {
 }
 function IconYoutube() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
       <path d="M22.54 6.42a2.78 2.78 0 0 0-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46A2.78 2.78 0 0 0 1.46 6.42 29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.95 1.95C5.12 20 12 20 12 20s6.88 0 8.59-.47a2.78 2.78 0 0 0 1.95-1.95A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z" />
       <polygon points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02" fill="white" />
     </svg>
@@ -27,14 +27,14 @@ function IconYoutube() {
 }
 function IconPhone() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
       <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.93 12a19.79 19.79 0 0 1-3-8.59A2 2 0 0 1 4 1.21h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.1a16 16 0 0 0 6.72 6.72l1.06-1.07a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" />
     </svg>
   );
 }
 function IconMail() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
       <polyline points="22,6 12,13 2,6" />
     </svg>
@@ -113,43 +113,43 @@ const s = {
     marginTop: "auto",
     background: "#1a2e1e",
     color: "rgba(255,255,255,0.82)",
-    paddingTop: 30,
+    paddingTop: 20,
   },
   inner: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "flex-start",
     flexWrap: "wrap",
-    gap: 20,
-    paddingBottom: 20,
+    gap: 16,
+    paddingBottom: 12,
   },
   brand: {
     maxWidth: 220,
   },
   logo: {
-    height: 32,
+    height: 24,
     width: "auto",
     filter: "brightness(0) invert(1)",
     opacity: 0.9,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   tagline: {
-    fontSize: "0.82rem",
-    lineHeight: 1.65,
+    fontSize: "0.75rem",
+    lineHeight: 1.5,
     color: "rgba(255,255,255,0.6)",
     margin: 0,
-    marginBottom: 10,
+    marginBottom: 8,
   },
   socials: {
     display: "flex",
-    gap: 12,
+    gap: 8,
   },
   social: {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    width: 30,
-    height: 30,
+    width: 24,
+    height: 24,
     borderRadius: "50%",
     background: "rgba(255,255,255,0.1)",
     color: "rgba(255,255,255,0.8)",
@@ -158,33 +158,33 @@ const s = {
   },
   colTitle: {
     fontWeight: 700,
-    fontSize: "0.85rem",
+    fontSize: "0.75rem",
     color: "#fff",
-    marginBottom: 10,
+    marginBottom: 6,
     letterSpacing: "0.02em",
   },
   link: {
     display: "block",
-    fontSize: "0.8rem",
+    fontSize: "0.7rem",
     color: "rgba(255,255,255,0.6)",
     textDecoration: "none",
-    marginBottom: 6,
+    marginBottom: 4,
     transition: "color 0.2s",
   },
   contactRow: {
     display: "flex",
     alignItems: "center",
-    gap: 10,
-    fontSize: "0.8rem",
+    gap: 6,
+    fontSize: "0.7rem",
     color: "rgba(255,255,255,0.7)",
-    marginBottom: 8,
+    marginBottom: 4,
   },
   contactIcon: {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    width: 28,
-    height: 28,
+    width: 20,
+    height: 20,
     borderRadius: "50%",
     background: "rgba(255,255,255,0.08)",
     flexShrink: 0,
@@ -205,8 +205,8 @@ const s = {
   },
   bottom: {
     borderTop: "1px solid rgba(255,255,255,0.08)",
-    padding: "12px 0",
-    fontSize: "0.75rem",
+    padding: "8px 0",
+    fontSize: "0.65rem",
     color: "rgba(255,255,255,0.5)",
   },
 };

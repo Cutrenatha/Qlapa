@@ -87,6 +87,7 @@ export default function Home() {
 
       {/* HERO */}
       <section className="hero-section">
+        <div className="container" style={{ width: "100%" }}>
           <div className="hero-content-wrapper">
             {/* Pill Badge */}
             <div className="hero-badge">
@@ -119,9 +120,8 @@ export default function Home() {
                 <span>Lihat Cara Kerja</span>
               </button>
             </div>
-
-
           </div>
+        </div>
       </section>
 
       {/* TEXT TEMUKAN PRODUK */}

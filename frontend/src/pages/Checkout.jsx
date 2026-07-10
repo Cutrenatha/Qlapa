@@ -4,7 +4,7 @@ import api from "../api.js";
 import { useCart } from "../context/CartContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
-import { MapPin, Truck, Store, ShieldCheck, Info, Plus, Minus, Trash2 } from "lucide-react";
+import { MapPin, Truck, Store, ShieldCheck, Info, Plus, Minus, Trash2, ShoppingCart, Scale, Droplet } from "lucide-react";
 
 export default function Checkout() {
   const { items, total, updateQty, removeItem, clearSelected } = useCart();
@@ -57,7 +57,7 @@ export default function Checkout() {
     return (
       <div className="section container" style={{ maxWidth: 640, minHeight: '70vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
         <div className="card" style={{ padding: 40, textAlign: 'center', borderRadius: 20 }}>
-          <span style={{ fontSize: '3rem' }}>🛒</span>
+          <span style={{ color: "var(--ink-soft)" }}><ShoppingCart size={48} strokeWidth={1.5} /></span>
           <h2 style={{ marginTop: 16, marginBottom: 8, color: 'var(--ink)' }}>Keranjang Checkout Kosong</h2>
           <p style={{ color: 'var(--ink-soft)', marginBottom: 24, fontSize: '0.92rem' }}>Anda tidak memiliki item untuk dibayar.</p>
           <Link to="/produk" className="btn btn-primary">
@@ -218,13 +218,13 @@ export default function Checkout() {
                         {item.product.condition}
                       </span>
                       {item.product.weight && (
-                        <span style={{ fontSize: '0.75rem', color: 'var(--ink-soft)' }}>
-                          ⚖️ {item.product.weight}
+                        <span style={{ fontSize: '0.75rem', color: 'var(--ink-soft)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                          <Scale size={12} /> {item.product.weight}
                         </span>
                       )}
                       {item.product.moisture && (
-                        <span style={{ fontSize: '0.75rem', color: 'var(--ink-soft)' }}>
-                          💧 {item.product.moisture}
+                        <span style={{ fontSize: '0.75rem', color: 'var(--ink-soft)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                          <Droplet size={12} /> {item.product.moisture}
                         </span>
                       )}
                     </div>

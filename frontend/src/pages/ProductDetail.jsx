@@ -313,8 +313,16 @@ export default function ProductDetail() {
 
             {activeTab === "info" ? (
               <div className="card" style={{ padding: 20, marginTop: 16, display: "flex", alignItems: "center", gap: 16 }}>
-                <div style={{ width: 46, height: 46, borderRadius: "50%", background: "var(--green-100)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, color: "var(--green-900)", fontSize: "1.1rem" }}>
-                  {product.seller?.store_name?.charAt(0) || "T"}
+                <div style={{ width: 46, height: 46, borderRadius: "50%", background: "var(--green-100)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, color: "var(--green-900)", fontSize: "1.1rem", overflow: "hidden" }}>
+                  {product.seller?.store_image_url || product.seller?.avatar_url ? (
+                    <img
+                      src={product.seller.store_image_url || product.seller.avatar_url}
+                      alt={product.seller.store_name}
+                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    />
+                  ) : (
+                    product.seller?.store_name?.charAt(0) || "T"
+                  )}
                 </div>
                 <div>
                   <div style={{ fontWeight: 700, color: "var(--ink)", fontSize: "0.95rem" }}>

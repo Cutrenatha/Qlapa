@@ -1,8 +1,8 @@
 import React, { useState } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
+import { Navigate, useNavigate, Link } from "react-router-dom";
 import { useAdminAuth } from "../../context/AdminAuthContext.jsx";
-import { Eye, EyeOff, Shield } from "lucide-react";
-import "./Admin.css";
+import { Eye, EyeOff, ArrowRight, Shield } from "lucide-react";
+import "../Auth.css";
 
 export default function AdminLogin() {
   const { admin, login } = useAdminAuth();
@@ -30,96 +30,112 @@ export default function AdminLogin() {
   };
 
   return (
-    <div className="admin-login-page">
-      {/* Background decorative blobs */}
-      <div className="admin-login-blob admin-login-blob--1" />
-      <div className="admin-login-blob admin-login-blob--2" />
-
-      <div className="admin-login-box">
-        {/* Header */}
-        <div className="admin-login-box-header">
-          <img
-            src="/assets/qlapa-logo.png"
-            alt="Qlapa"
-            className="admin-login-box-logo"
-          />
-          <div className="admin-login-box-badge">
-            <Shield size={13} strokeWidth={2} />
-            Admin Panel
-          </div>
-          <h1 className="admin-login-box-title">Selamat Datang</h1>
-          <p className="admin-login-box-sub">
-            Masuk untuk mengelola platform Qlapa
-          </p>
-        </div>
-
-        {/* Form */}
-        <form onSubmit={submit} className="admin-login-box-form">
-          <div className="admin-field">
-            <label className="admin-field-label" htmlFor="admin-email">
-              Email Admin
-            </label>
-            <input
-              id="admin-email"
-              className="admin-field-input"
-              type="email"
-              required
-              autoFocus
-              placeholder="admin@qlapa.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoComplete="email"
+    <div className="auth-page">
+      <div
+        className="auth-panel auth-panel--image"
+        style={{ backgroundImage: "url('/assets/klapa.png')" }}
+      >
+        <div className="auth-panel-overlay" />
+        <div className="auth-panel-content">
+          <div className="auth-panel-logo">
+            <img
+              src="/assets/qlapa-logo.png"
+              alt="Qlapa"
+              className="auth-logo-img"
             />
           </div>
+          <div className="auth-panel-tagline">
+            <h2>Panel Administratif Qlapa.</h2>
+            <p>
+              Kelola platform, pengguna, dan transaksi dengan aman untuk memastikan ekosistem berjalan lancar.
+            </p>
+          </div>
+          <div className="auth-panel-dots">
+            <span className="auth-dot auth-dot--active" />
+            <span className="auth-dot" />
+            <span className="auth-dot" />
+          </div>
+        </div>
+      </div>
 
-          <div className="admin-field">
-            <label className="admin-field-label" htmlFor="admin-password">
-              Password
-            </label>
-            <div className="admin-input-group">
-              <input
-                id="admin-password"
-                className="admin-field-input"
-                type={showPass ? "text" : "password"}
-                required
-                placeholder="Masukkan password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete="current-password"
-              />
-              <button
-                type="button"
-                className="admin-input-eye"
-                onClick={() => setShowPass(!showPass)}
-                tabIndex={-1}
-              >
-                {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
+      <div className="auth-panel auth-panel--form">
+        <div className="auth-form-wrapper">
+          <div className="auth-form-header">
+            <p className="auth-form-eyebrow" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Shield size={14} /> Admin Portal
+            </p>
+            <h1 className="auth-form-title">Masuk ke Qlapa Admin</h1>
+            <p className="auth-form-sub">
+              Hanya untuk administrator sistem.
+            </p>
           </div>
 
-          {error && (
-            <div className="admin-error-banner">
-              <Shield size={14} /> {error}
+          <form onSubmit={submit} className="auth-form">
+            <div className="auth-field">
+              <label className="auth-label" htmlFor="admin-email">
+                Email Admin
+              </label>
+              <input
+                id="admin-email"
+                className="auth-input"
+                type="email"
+                required
+                autoFocus
+                placeholder="admin@qlapa.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
+              />
             </div>
-          )}
 
-          <button
-            className="admin-login-submit"
-            type="submit"
-            disabled={loading}
-          >
-            {loading ? (
-              <span className="admin-btn-spinner" />
-            ) : (
-              "Masuk ke Panel Admin"
-            )}
-          </button>
-        </form>
+            <div className="auth-field">
+              <label className="auth-label" htmlFor="admin-password">
+                Password
+              </label>
+              <div className="auth-input-wrapper">
+                <input
+                  id="admin-password"
+                  className="auth-input"
+                  type={showPass ? "text" : "password"}
+                  required
+                  placeholder="Masukkan password admin"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="current-password"
+                />
+                <button
+                  type="button"
+                  className="auth-eye-btn"
+                  onClick={() => setShowPass(!showPass)}
+                  tabIndex={-1}
+                >
+                  {showPass ? <EyeOff size={17} /> : <Eye size={17} />}
+                </button>
+              </div>
+            </div>
 
-        <p className="admin-login-box-note">
-          Halaman ini hanya untuk administrator Qlapa dan terpisah dari akun pembeli/penjual.
-        </p>
+            {error && <p className="auth-error">{error}</p>}
+
+            <button
+              className="auth-submit-btn"
+              type="submit"
+              disabled={loading}
+            >
+              {loading ? (
+                <span className="auth-spinner" />
+              ) : (
+                <>
+                  <span>Masuk ke Panel Admin</span>
+                  <ArrowRight size={17} />
+                </>
+              )}
+            </button>
+          </form>
+          
+          <div style={{ marginTop: 24, fontSize: '0.85rem', color: 'var(--ink-soft)', textAlign: 'center' }}>
+            <Link to="/masuk" className="auth-link">Kembali ke login pengguna</Link>
+          </div>
+        </div>
       </div>
     </div>
   );

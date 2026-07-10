@@ -115,6 +115,8 @@ class Product(db.Model):
                 "id": self.seller.id,
                 "store_name": self.seller.store_name or self.seller.name,
                 "store_location": self.seller.store_location,
+                "store_image_url": self.seller.store_image_url,
+                "avatar_url": self.seller.avatar_url,
             }
         return data
 
@@ -228,4 +230,57 @@ class Review(db.Model):
             "rating": self.rating,
             "comment": self.comment,
             "created_at": self.created_at.isoformat(),
+        }
+
+
+class CartItem(db.Model):
+    __tablename__ = "cart_items"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey("products.id", ondelete="CASCADE"), nullable=False)
+    qty = db.Column(db.Float, nullable=False, default=1.0)
+    selected = db.Column(db.Boolean, nullable=False, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Relationships
+    user = db.relationship("User", backref=db.backref("cart_items", lazy=True, cascade="all, delete-orphan"))
+    product = db.relationship("Product", lazy=True)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "product_id": self.product_id,
+            "qty": self.qty,
+            "selected": self.selected,
+            "product": self.product.to_dict(include_seller=True) if self.product else None
+        }
+
+
+class AIChatSession(db.Model):
+    __tablename__ = "ai_chat_sessions"
+
+    id = db.Column(db.String(50), primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    title = db.Column(db.String(255), nullable=False, default="Sesi Baru")
+    messages = db.Column(db.Text, nullable=False, default="[]")
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user = db.relationship("User", backref=db.backref("ai_chat_sessions", lazy=True, cascade="all, delete-orphan"))
+
+    def to_dict(self):
+        import json
+        try:
+            msgs = json.loads(self.messages)
+        except:
+            msgs = []
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "title": self.title,
+            "messages": msgs,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
         }

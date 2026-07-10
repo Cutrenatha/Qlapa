@@ -13,6 +13,8 @@
   --brown-300: #B38250;
   --brown-100: #F7EFE4;
 
+  --brand: var(--brown-700);
+
   --cream: #FAF9F5;
   --cream-2: #F2EFE8;
   --paper: #FFFFFF;
@@ -49,7 +51,7 @@ html, body {
 }
 
 #root { min-height: 100vh; display: flex; flex-direction: column; }
-.app-content { flex: 1; display: flex; flex-direction: column; }
+.app-content { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 @media (min-width: 900px) {
   .nav-links { display: flex; }
 }
@@ -271,7 +273,7 @@ img { max-width: 100%; display: block; }
   background-size: cover;
   background-position: right center;
   background-repeat: no-repeat;
-  padding: 64px 24px 80px 24px;
+  padding: 64px 0 80px 0;
   overflow: hidden;
 }
 
@@ -428,7 +430,7 @@ img { max-width: 100%; display: block; }
   .hero-section {
     background-image: linear-gradient(to bottom, rgba(251, 247, 239, 0.92) 35%, rgba(251, 247, 239, 0.8) 65%, rgba(251, 247, 239, 0.1) 95%), url('/assets/klapa.png');
     background-position: center;
-    padding: 48px 16px;
+    padding: 48px 0;
     min-height: auto;
   }
   

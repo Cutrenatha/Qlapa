@@ -29,6 +29,13 @@ import re
 import numpy as np
 from PIL import Image, ImageStat, ImageFilter, ImageOps
 
+# Load .env SEBELUM membaca env var agar GEMINI_API_KEY terbaca dengan benar
+try:
+    from dotenv import load_dotenv
+    load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env'))
+except ImportError:
+    pass
+
 try:
     from google import genai
     from google.genai import types
@@ -36,9 +43,40 @@ except ImportError:
     genai = None
     types = None
 
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY") or os.environ.get("OPENAI_API_KEY")
-GEMINI_MODEL_ID = "gemini-2.5-flash"
-GEMINI_CLIENT = genai.Client(api_key=GEMINI_API_KEY) if genai and GEMINI_API_KEY else None
+# Baca API key Gemini/Google (OPENAI_API_KEY sengaja TIDAK dipakai di sini
+# karena formatnya beda dan bukan untuk client Gemini)
+GEMINI_API_KEY = (
+    os.environ.get("GEMINI_API_KEY")
+    or os.environ.get("GOOGLE_API_KEY")
+)
+
+# Daftar model dicoba berurutan (fallback berjenjang) kalau model pertama
+# kena rate-limit/quota (429). Bisa dioverride lewat .env:
+#   GEMINI_MODEL_ID=gemini-2.0-flash,gemini-2.5-flash,gemini-1.5-flash
+GEMINI_MODEL_CANDIDATES = [
+    m.strip() for m in os.environ.get(
+        "GEMINI_MODEL_ID",
+        "gemini-2.0-flash,gemini-2.5-flash,gemini-1.5-flash"
+    ).split(",") if m.strip()
+]
+# Dipakai di beberapa tempat lain (mis. log) sebagai model utama/default
+GEMINI_MODEL_ID = GEMINI_MODEL_CANDIDATES[0]
+
+def _make_gemini_client():
+    """Buat client Gemini setelah .env sudah terbaca."""
+    key = (
+        os.environ.get("GEMINI_API_KEY")
+        or os.environ.get("GOOGLE_API_KEY")
+    )
+    if genai and key:
+        try:
+            return genai.Client(api_key=key)
+        except Exception as e:
+            print(f"[Qlapa AI] Gagal inisialisasi Gemini client: {e}")
+    return None
+
+GEMINI_CLIENT = _make_gemini_client()
+print(f"[Qlapa AI] Gemini client: {'AKTIF' if GEMINI_CLIENT else 'TIDAK TERSEDIA (cek GEMINI_API_KEY / GOOGLE_API_KEY di .env)'}")
 
 # Basis pengetahuan pemanfaatan hilir per kategori limbah kelapa
 DOWNSTREAM_MAP = {
@@ -75,6 +113,23 @@ CONDITION_HINTS = {
     "Segar": "kondisi baru dipanen, kualitas optimal untuk pengolahan lanjutan",
 }
 
+# Estimasi harga per kg (Rupiah) berdasarkan riset harga pasar bahan baku limbah
+# kelapa di tingkat petani/pengepul (bukan harga produk jadi/kerajinan).
+# Referensi kasar: cocopeat ~Rp1.100/kg & cocofiber ~Rp1.900/kg di tingkat petani,
+# batok kelapa mentah jauh di bawah harga arang olahan (Rp15rb-22rb/kg di retail),
+# ampas kering (bahan baku tepung kelapa) bernilai jauh lebih tinggi dari ampas
+# basah (cuma layak jadi pakan ternak/kompos).
+# Kondisi "Kering" > "Segar" > "Basah" karena kondisi kering lebih siap olah,
+# tahan lama, dan lebih diminati industri hilir - kecuali Air Kelapa yang
+# justru paling bernilai saat masih segar/baru (cepat rusak).
+PRICE_FALLBACK = {
+    ("Tempurung", "Kering"): 2800, ("Tempurung", "Basah"): 1100, ("Tempurung", "Segar"): 1400,
+    ("Sabut", "Kering"): 1900, ("Sabut", "Basah"): 800, ("Sabut", "Segar"): 1000,
+    ("Ampas", "Kering"): 4500, ("Ampas", "Basah"): 1000, ("Ampas", "Segar"): 1300,
+    ("Daun", "Kering"): 900, ("Daun", "Basah"): 400, ("Daun", "Segar"): 600,
+    ("Air Kelapa", "Kering"): 1000, ("Air Kelapa", "Basah"): 1400, ("Air Kelapa", "Segar"): 1800,
+}
+
 
 def _extract_json_object(text: str) -> dict:
     if not text:
@@ -101,15 +156,46 @@ def _extract_json_object(text: str) -> dict:
 
 
 def _call_gemini(prompt: str, temperature: float = 0.25) -> str:
+    """Panggil Gemini dengan retry per model + fallback berjenjang ke model
+    berikutnya kalau kena rate-limit/quota (429) atau server sibuk (503)."""
     if not GEMINI_CLIENT:
         raise RuntimeError("Gemini client tidak tersedia (cek GEMINI_API_KEY di .env)")
+    import time
     config = types.GenerateContentConfig(temperature=temperature, top_p=0.95)
-    response = GEMINI_CLIENT.models.generate_content(
-        model=GEMINI_MODEL_ID,
-        contents=prompt,
-        config=config,
-    )
-    return (getattr(response, "text", None) or "").strip()
+
+    max_retries_per_model = 2
+    last_err = None
+
+    for model_id in GEMINI_MODEL_CANDIDATES:
+        for attempt in range(max_retries_per_model):
+            try:
+                response = GEMINI_CLIENT.models.generate_content(
+                    model=model_id,
+                    contents=prompt,
+                    config=config,
+                )
+                text = (getattr(response, "text", None) or "").strip()
+                if text:
+                    return text
+                last_err = RuntimeError(f"Respons kosong dari model {model_id}")
+                break  # respons kosong, coba model lain, bukan retry model sama
+            except Exception as e:
+                last_err = e
+                err_str = str(e)
+                if ("429" in err_str or "RESOURCE_EXHAUSTED" in err_str) and attempt == 0:
+                    # Rate-limit: langsung coba model berikutnya, jangan buang waktu retry di model sama
+                    print(f"[Qlapa AI] Model {model_id} kena rate-limit (429), pindah ke model berikutnya...")
+                    break
+                if "503" in err_str and attempt < max_retries_per_model - 1:
+                    print(f"[Qlapa AI] Model {model_id} 503 (server sibuk), retry dalam 2 detik... (Attempt {attempt + 1}/{max_retries_per_model})")
+                    time.sleep(2)
+                else:
+                    print(f"[Qlapa AI] Model {model_id} gagal: {e}")
+                    break
+
+    if last_err:
+        raise last_err
+    return ""
 
 
 def _call_gemini_vision(image_path: str, prompt: str, temperature: float = 0.2) -> str:
@@ -122,21 +208,49 @@ def _call_gemini_vision(image_path: str, prompt: str, temperature: float = 0.2) 
     with open(image_path, "rb") as f:
         image_bytes = f.read()
 
+    import time
     config = types.GenerateContentConfig(temperature=temperature, top_p=0.95)
-    response = GEMINI_CLIENT.models.generate_content(
-        model=GEMINI_MODEL_ID,
-        contents=[
-            types.Part.from_bytes(data=image_bytes, mime_type=mime_type),
-            prompt,
-        ],
-        config=config,
-    )
-    return (getattr(response, "text", None) or "").strip()
+
+    max_retries_per_model = 2
+    last_err = None
+
+    for model_id in GEMINI_MODEL_CANDIDATES:
+        for attempt in range(max_retries_per_model):
+            try:
+                response = GEMINI_CLIENT.models.generate_content(
+                    model=model_id,
+                    contents=[
+                        types.Part.from_bytes(data=image_bytes, mime_type=mime_type),
+                        prompt,
+                    ],
+                    config=config,
+                )
+                text = (getattr(response, "text", None) or "").strip()
+                if text:
+                    return text
+                last_err = RuntimeError(f"Respons kosong dari model {model_id}")
+                break
+            except Exception as e:
+                last_err = e
+                err_str = str(e)
+                if ("429" in err_str or "RESOURCE_EXHAUSTED" in err_str) and attempt == 0:
+                    print(f"[Qlapa AI] Model {model_id} kena rate-limit (429), pindah ke model berikutnya...")
+                    break
+                if "503" in err_str and attempt < max_retries_per_model - 1:
+                    print(f"[Qlapa AI] Model {model_id} 503 (server sibuk), retry dalam 2 detik... (Attempt {attempt + 1}/{max_retries_per_model})")
+                    time.sleep(2)
+                else:
+                    print(f"[Qlapa AI] Model {model_id} gagal: {e}")
+                    break
+
+    if last_err:
+        raise last_err
+    return ""
 
 
 def _ai_analyze_image(image_path: str) -> dict:
     """Kirim foto asli ke Gemini 2.5 Flash (vision) untuk identifikasi jenis limbah kelapa,
-    kondisi, kualitas, estimasi berat, dan deskripsi produk sekaligus."""
+    kondisi, kualitas, estimasi berat, estimasi harga, dan deskripsi produk sekaligus."""
     if not GEMINI_CLIENT:
         return {}
 
@@ -165,7 +279,7 @@ def _ai_analyze_image(image_path: str) -> dict:
         f"{category_visual_guide}\n\n"
         f"Kategori HARUS salah satu dari: {valid_categories}. "
         f"Kondisi HARUS salah satu dari: {valid_conditions}. "
-        "Balas HANYA dengan JSON valid (tanpa markdown, tanpa teks lain) dengan kunci persis: "
+        "Balas HANYA dengan JSON valid (tanpa markdown, tanpa teks lain) dengan kunci persis:\n"
         "name, category, condition, quality, stock_estimate_kg, description, confidence.\n"
         "- name: nama produk singkat yang menarik untuk listing (contoh: 'Tempurung Kelapa Kering Siap Olah')\n"
         "- quality: 1 kalimat pendek kondisi kebersihan/kualitas visual bahan\n"
@@ -425,6 +539,8 @@ def _analyze_product_image_fallback(filepath: str) -> dict:
     weight_map = {"Tempurung": 15, "Sabut": 10, "Ampas": 5, "Daun": 3, "Air Kelapa": 20}
     stock_estimate = weight_map.get(category, 5)
 
+    price_estimate = PRICE_FALLBACK.get((category, condition), 1500)
+
     name = f"{category} Kelapa {condition}"
     suggestions = ai_suggest_product_fields(
         name=name,
@@ -441,61 +557,107 @@ def _analyze_product_image_fallback(filepath: str) -> dict:
         "quality": suggestions["quality"],
         "notes": suggestions["notes"],
         "stock_estimate": stock_estimate,
+        "price_estimate": price_estimate,
         "ai_description": suggestions["description"],
+        "confidence": 1,
+        "low_confidence": True,
     }
 
 
 def analyze_product_image(filepath: str) -> dict:
-    """Menganalisis foto produk limbah kelapa.
-    Prioritas: kirim foto asli ke Gemini 2.5 Flash (vision) untuk identifikasi kategori,
-    kondisi, kualitas, estimasi berat, dan deskripsi sekaligus dalam satu panggilan.
-    Kalau Gemini gagal/tidak tersedia, jatuh ke heuristik warna/tekstur (PIL) sebagai cadangan."""
+    """Menganalisis foto produk limbah kelapa murni menggunakan Gemini Vision.
+    Jika Gemini gagal/sibuk, akan throw error agar tidak menghasilkan kategori yang keliru / data default."""
 
     ai_result = _ai_analyze_image(filepath)
 
-    if ai_result and ai_result.get("category") in DOWNSTREAM_MAP:
-        category = ai_result.get("category")
-        condition = ai_result.get("condition") if ai_result.get("condition") in CONDITION_HINTS else "Kering"
-        name = ai_result.get("name") or f"{category} Kelapa {condition}"
-        quality = ai_result.get("quality") or "Kualitas baik, siap dikirim"
-        description = ai_result.get("description") or _generate_ai_description_fallback(
-            name, category, condition, ""
-        )
-        try:
-            stock_estimate = int(ai_result.get("stock_estimate_kg"))
-        except (TypeError, ValueError):
-            stock_estimate = {"Tempurung": 15, "Sabut": 10, "Ampas": 5, "Daun": 3, "Air Kelapa": 20}.get(category, 5)
+    if not ai_result or ai_result.get("category") not in DOWNSTREAM_MAP:
+        raise RuntimeError("AI sedang sibuk atau foto tidak jelas dikenali. Silakan coba lagi atau isi data secara manual.")
 
-        try:
-            confidence = int(ai_result.get("confidence"))
-        except (TypeError, ValueError):
-            confidence = None
+    category = ai_result.get("category")
+    condition = ai_result.get("condition") if ai_result.get("condition") in CONDITION_HINTS else "Kering"
+    name = ai_result.get("name") or f"{category} Kelapa {condition}"
+    quality = ai_result.get("quality") or "Kualitas baik, siap dikirim"
+    description = ai_result.get("description") or _generate_ai_description_fallback(
+        name, category, condition, ""
+    )
+    try:
+        stock_estimate = int(ai_result.get("stock_estimate_kg"))
+    except (TypeError, ValueError):
+        stock_estimate = {"Tempurung": 15, "Sabut": 10, "Ampas": 5, "Daun": 3, "Air Kelapa": 20}.get(category, 5)
 
-        return {
-            "name": name,
-            "category": category,
-            "condition": condition,
-            "quality": quality,
-            "notes": "",
-            "stock_estimate": stock_estimate,
-            "ai_description": description,
-            "confidence": confidence,
-            "low_confidence": bool(confidence is not None and confidence <= 2),
-        }
+    # Harga konsisten dari data backend (tabel PRICE_FALLBACK global), tidak lagi
+    # menebak-nebak via AI agar selalu presisi dan konsisten antar produk
+    price_estimate = PRICE_FALLBACK.get((category, condition), 1500)
 
-    # Gemini Vision gagal atau tidak tersedia -> fallback heuristik lama
-    return _analyze_product_image_fallback(filepath)
+    try:
+        confidence = int(ai_result.get("confidence"))
+    except (TypeError, ValueError):
+        confidence = 5
+    low_confidence = confidence <= 2
+
+    return {
+        "name": name,
+        "category": category,
+        "condition": condition,
+        "quality": quality,
+        "notes": "",
+        "stock_estimate": stock_estimate,
+        "price_estimate": price_estimate,
+        "ai_description": description,
+        "confidence": confidence,
+        "low_confidence": low_confidence,
+    }
 
 
 def chat_with_ai(message: str, category: str = None) -> str:
-    """Router sederhana untuk widget chatbot 'Qlapa AI' di halaman produk/beranda."""
+    """Chatbot Qlapa AI untuk pembeli menggunakan Gemini LLM."""
+    if not GEMINI_CLIENT:
+        message_lower = message.lower()
+        for cat in DOWNSTREAM_MAP:
+            if cat.lower() in message_lower:
+                return get_recommendation(cat, message)
+        if category:
+            return get_recommendation(category, message)
+        return (
+            "Halo! Saya Qlapa AI 🌱. Tanyakan apa saja tentang pemanfaatan limbah kelapa, "
+            "misalnya: 'apa manfaat sabut kelapa?' atau 'bisa jadi apa ampas kelapa?'"
+        )
+
+    system_prompt = (
+        "Kamu adalah Qlapa AI, asisten virtual ramah dari platform Qlapa "
+        "(marketplace jual-beli limbah kelapa). Tugasmu membantu pembeli (B2B/UMKM/Industri) "
+        "menemukan ide pemanfaatan limbah kelapa (Tempurung, Sabut, Ampas, Daun, Air Kelapa). "
+        "Berikan jawaban yang solutif, inspiratif, dan relevan dengan industri/bisnis. "
+        "Gunakan bahasa Indonesia yang profesional namun hangat. "
+        "Jawab langsung pada intinya, tidak terlalu panjang (1-3 paragraf saja). "
+        "PENTING: Jangan gunakan format markdown seperti bintang (**) untuk teks tebal. "
+        "Tulis jawaban mengalir seperti teks biasa agar enak dibaca."
+    )
+    
+    if category:
+        system_prompt += f"\nKonteks: Pengguna saat ini mungkin sedang melihat produk limbah kategori '{category}'."
+
+    prompt = f"{system_prompt}\n\nPertanyaan pengguna: {message}\n\nJawaban Qlapa AI:"
+
+    try:
+        response = _call_gemini(prompt, temperature=0.7)
+        if response:
+            return response
+    except Exception as e:
+        print(f"[Qlapa AI] Chat error (langsung ke fallback lokal): {e}")
+        
+    # Fallback lokal jika Gemini sibuk (503/429) atau tidak tersedia
     message_lower = message.lower()
     for cat in DOWNSTREAM_MAP:
         if cat.lower() in message_lower:
             return get_recommendation(cat, message)
-    if category:
+            
+    # Hanya berikan rekomendasi kategori jika pertanyaan mendeteksi kata kunci pemanfaatan
+    keywords = ["rekomendasi", "manfaat", "olah", "buat", "produk", "bisnis", "ide", "limbah", "apa saja", "guna", "tanya"]
+    if category and any(kw in message_lower for kw in keywords):
         return get_recommendation(category, message)
+    
     return (
-        "Halo! Saya Qlapa AI 🌱. Tanyakan apa saja tentang pemanfaatan limbah kelapa, "
-        "misalnya: 'apa manfaat sabut kelapa?' atau 'bisa jadi apa ampas kelapa?'"
+        "Maaf, saat ini Qlapa AI sedang mengalami kendala jaringan (kuota API habis). "
+        "Silakan coba tanyakan lagi beberapa saat kemudian 🌱."
     )

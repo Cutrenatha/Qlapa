@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Routes, Route, useLocation } from "react-router-dom";
 import Navbar from "./components/Navbar.jsx";
 import Footer from "./components/Footer.jsx";
@@ -17,6 +17,7 @@ import SellerDashboard from "./pages/SellerDashboard.jsx";
 import AddProduct from "./pages/AddProduct.jsx";
 import EditProduct from "./pages/EditProduct.jsx";
 import Orders from "./pages/Orders.jsx";
+import QlapaAI from "./pages/QlapaAI.jsx";
 import NotFound from "./pages/NotFound.jsx";
 import AdminLogin from "./pages/admin/AdminLogin.jsx";
 import AdminDashboard from "./pages/admin/AdminDashboard.jsx";
@@ -31,10 +32,15 @@ export default function App() {
   const hideShell = isAdmin || isAuth || isOpenStore;
   const hideFooter = hideShell || isDashboard;
 
+  // Auto scroll to top on route change
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [location.pathname]);
+
   return (
     <>
       {!hideShell && <Navbar />}
-      <div className={hideShell ? "" : "app-content"}>
+      <div className={hideShell ? "" : "app-content"} style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/produk" element={<ProductList />} />
@@ -43,6 +49,7 @@ export default function App() {
         <Route path="/daftar" element={<Register />} />
         <Route path="/keranjang" element={<Cart />} />
         <Route path="/checkout" element={<Checkout />} />
+        <Route path="/ai" element={<QlapaAI />} />
         <Route path="/chat" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
         <Route path="/profil" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
         <Route path="/toko/buka" element={<ProtectedRoute><OpenStore /></ProtectedRoute>} />

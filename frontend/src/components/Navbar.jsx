@@ -57,6 +57,7 @@ export default function Navbar() {
   const closeAllMenus = () => {
     setMenuOpen(false);
     setMobileMenuOpen(false);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   return (
@@ -97,6 +98,16 @@ export default function Navbar() {
           >
             {isSellerMode ? "Pemesanan" : "Pesanan"}
           </Link>
+          {!isSellerMode && (
+            <Link
+              to="/ai"
+              className={`navbar-menu-item ${path === "/ai" ? "active" : ""}`}
+              onClick={closeAllMenus}
+              style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+            >
+              Qlapa AI
+            </Link>
+          )}
         </nav>
 
         {/* Kanan: tombol Toko Saya/Ke Pasar, lalu icon Chat, Keranjang/Notifikasi, dan Profil */}
@@ -313,6 +324,16 @@ export default function Navbar() {
               <span>{isSellerMode ? "Pemesanan" : "Pesanan"}</span>
               <ChevronRight size={16} />
             </Link>
+            {!isSellerMode && (
+              <Link
+                to="/ai"
+                className={`navbar-mobile-item ${path === "/ai" ? "active" : ""}`}
+                onClick={closeAllMenus}
+              >
+                <span>Qlapa AI</span>
+                <ChevronRight size={16} />
+              </Link>
+            )}
             <Link
               to="/chat"
               className="navbar-mobile-item"

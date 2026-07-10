@@ -4,6 +4,7 @@ import api from "../api.js";
 import { useToast } from "../context/ToastContext.jsx";
 
 const CATEGORIES = ["Ampas", "Tempurung", "Sabut", "Daun", "Air Kelapa"];
+const UNITS = ["kg", "ons", "gram", "liter", "ikat", "karung", "pcs"];
 
 export default function EditProduct() {
   const { id } = useParams();
@@ -68,7 +69,13 @@ export default function EditProduct() {
           </div>
           <div className="field" style={{ flex: 1 }}>
             <label>Satuan</label>
-            <input value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} />
+            <select value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })}>
+              {(UNITS.includes(form.unit) ? UNITS : [...UNITS, form.unit]).map((u) => (
+                <option key={u} value={u}>
+                  {u}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
         <div className="field">

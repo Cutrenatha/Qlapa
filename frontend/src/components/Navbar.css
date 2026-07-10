@@ -35,7 +35,7 @@
 .navbar-logo-link {
   display: flex;
   align-items: center;
-  flex-shrink: 0;
+  flex: 1;
   transition: opacity 0.25s ease, transform 0.25s ease;
 }
 
@@ -87,8 +87,9 @@
 .navbar-actions {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 12px;
-  flex-shrink: 0;
+  flex: 1;
 }
 
 /* Toko Saya Button */
@@ -104,6 +105,7 @@
   font-size: 0.88rem;
   font-weight: 600;
   text-decoration: none;
+  white-space: nowrap;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -132,6 +134,7 @@
   font-size: 0.88rem;
   font-weight: 600;
   text-decoration: none;
+  white-space: nowrap;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 

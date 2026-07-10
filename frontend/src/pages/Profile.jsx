@@ -358,6 +358,7 @@ function AvatarUploader({ endpoint, label, currentPhoto, defaultIcon }) {
       fd.append("image", file);
       await api.post(endpoint, fd, { headers: { "Content-Type": "multipart/form-data" } });
       await refreshUser();
+      setPreview("");
       showToast(`${label} berhasil diperbarui`);
     } catch (err) {
       console.error(err);

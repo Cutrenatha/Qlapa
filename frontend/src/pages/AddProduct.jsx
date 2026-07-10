@@ -6,6 +6,7 @@ import { Camera, X, RefreshCcw, Sparkles } from "lucide-react";
 
 const CATEGORIES = ["Ampas", "Tempurung", "Sabut", "Daun", "Air Kelapa"];
 const CONDITIONS = ["Kering", "Segar"];
+const UNITS = ["kg", "ons", "gram", "liter", "ikat", "karung", "pcs"];
 
 export default function AddProduct() {
   const navigate = useNavigate();
@@ -28,11 +29,12 @@ export default function AddProduct() {
   const [imagePreview, setImagePreview] = useState("");
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzed, setAnalyzed] = useState(false);
+  const [lowConfidence, setLowConfidence] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const setField = (key, value) => setForm((f) => ({ ...f, [key]: value }));
 
-  const pickFile = (file) => {
+  const pickFile = async (file) => {
     if (!file) return;
     if (!file.type.startsWith("image/")) {
       showToast("File harus berupa gambar (JPG, PNG, WEBP)", "error");
@@ -45,7 +47,10 @@ export default function AddProduct() {
     setImageFile(file);
     setImagePreview(URL.createObjectURL(file));
     setAnalyzed(false);
+    setLowConfidence(false);
     setForm((f) => ({ ...f, image_url: "" }));
+    // Auto-analyze immediately after picking the photo
+    await analyzeImageFile(file);
   };
 
   const onFileChange = (e) => pickFile(e.target.files?.[0]);
@@ -63,17 +68,18 @@ export default function AddProduct() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const analyzeImage = async () => {
-    if (!imageFile) return;
+  // Core analyze logic accepts a File object so it can be called auto (on pick) or manually
+  const analyzeImageFile = async (file) => {
+    if (!file) return;
     setAnalyzing(true);
     try {
       const fd = new FormData();
-      fd.append("image", imageFile);
+      fd.append("image", file);
       const res = await api.post("/products/analyze-image", fd, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       const r = res.data;
-      // Map backend category labels to frontend options
+      // Map backend category labels to frontend CATEGORIES list
       const mapCategory = (cat) => {
         if (!cat) return "Tempurung";
         const normalized = cat.toLowerCase();
@@ -84,23 +90,33 @@ export default function AddProduct() {
         if (normalized.includes("air")) return "Air Kelapa";
         return "Tempurung";
       };
+      const mapCondition = (cond) => {
+        if (!cond) return "Kering";
+        const c = cond.toLowerCase();
+        if (c.includes("basah")) return "Basah";
+        if (c.includes("segar")) return "Segar";
+        return "Kering";
+      };
 
       setForm((f) => ({
         ...f,
         name: r.name || f.name,
         image_url: r.image_url || f.image_url,
-        category: mapCategory(r.category) || f.category,
-        condition: r.condition || f.condition,
+        category: mapCategory(r.category),
+        condition: mapCondition(r.condition),
+        quality: r.quality || f.quality,
         stock: r.stock_estimate != null ? String(r.stock_estimate) : f.stock,
+        price: r.price_estimate != null ? String(r.price_estimate) : f.price,
       }));
       setAiDesc(r.ai_description || "");
       setAnalyzed(true);
-      const conf = r.confidence
-        ? ` (confidence: ${Math.round(r.confidence * 100)}%)`
-        : "";
-      showToast(
-        `Foto berhasil dianalisis!${conf} Cek & sesuaikan datanya di bawah.`,
-      );
+      setLowConfidence(!!r.low_confidence);
+      const confText = r.confidence != null ? ` · Keyakinan AI: ${r.confidence}/5` : "";
+      if (r.low_confidence) {
+        showToast(`Foto dianalisis${confText}. Keyakinan AI rendah — mohon cek & koreksi data.`, "warning");
+      } else {
+        showToast(`Foto berhasil dianalisis${confText}! Cek & sesuaikan data di bawah.`);
+      }
     } catch (err) {
       showToast(
         err.response?.data?.error || "Gagal menganalisis gambar",
@@ -110,6 +126,9 @@ export default function AddProduct() {
       setAnalyzing(false);
     }
   };
+
+  // Manual re-analyze (uses current imageFile state)
+  const analyzeImage = () => analyzeImageFile(imageFile);
 
   const generateDesc = async () => {
     if (!form.name || !form.category) {
@@ -247,7 +266,7 @@ export default function AddProduct() {
                 </button>
               </div>
 
-              {analyzed && (
+              {analyzed && !lowConfidence && (
                 <div
                   className="row gap-8"
                   style={{
@@ -259,8 +278,24 @@ export default function AddProduct() {
                     color: "var(--green-900)",
                   }}
                 >
-                  ✅ Selesai dianalisis! Data di bawah sudah terisi otomatis —
+                  ✅ Selesai dianalisis! Nama, Kategori &amp; estimasi Harga sudah terisi otomatis —
                   silakan cek &amp; sesuaikan.
+                </div>
+              )}
+              {analyzed && lowConfidence && (
+                <div
+                  className="row gap-8"
+                  style={{
+                    marginTop: 14,
+                    padding: "10px 14px",
+                    background: "#FEF9C3",
+                    borderRadius: "var(--radius-sm)",
+                    fontSize: "0.85rem",
+                    color: "#92400E",
+                    border: "1px solid #FDE68A",
+                  }}
+                >
+                  ⚠️ AI kurang yakin pada foto ini — mohon periksa dan koreksi Nama, Kategori &amp; Harga secara manual.
                 </div>
               )}
             </div>
@@ -356,11 +391,16 @@ export default function AddProduct() {
               </div>
               <div className="field" style={{ flex: "1 1 100px" }}>
                 <label>Satuan</label>
-                <input
+                <select
                   value={form.unit}
                   onChange={(e) => setField("unit", e.target.value)}
-                  placeholder="kg / liter / ikat"
-                />
+                >
+                  {(UNITS.includes(form.unit) ? UNITS : [...UNITS, form.unit]).map((u) => (
+                    <option key={u} value={u}>
+                      {u}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 
