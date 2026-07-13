@@ -17,11 +17,12 @@ import SellerDashboard from "./pages/SellerDashboard.jsx";
 import AddProduct from "./pages/AddProduct.jsx";
 import EditProduct from "./pages/EditProduct.jsx";
 import Orders from "./pages/Orders.jsx";
-import QlapaAI from "./pages/QlapaAI.jsx";
 import NotFound from "./pages/NotFound.jsx";
 import AdminLogin from "./pages/admin/AdminLogin.jsx";
 import AdminDashboard from "./pages/admin/AdminDashboard.jsx";
 import AdminRoute from "./components/AdminRoute.jsx";
+
+import FloatingAI from "./components/FloatingAI.jsx";
 
 export default function App() {
   const location = useLocation();
@@ -39,6 +40,24 @@ export default function App() {
 
   return (
     <>
+      <svg width="0" height="0" aria-hidden="true" focusable="false" style={{ position: "absolute" }}>
+        <filter id="liquid-glass-distortion">
+          <feTurbulence
+            type="turbulence"
+            baseFrequency="0.028"
+            numOctaves="2"
+            seed="7"
+            result="noise"
+          />
+          <feDisplacementMap
+            in="SourceGraphic"
+            in2="noise"
+            scale="13"
+            xChannelSelector="G"
+            yChannelSelector="B"
+          />
+        </filter>
+      </svg>
       {!hideShell && <Navbar />}
       <div className={hideShell ? "" : "app-content"} style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       <Routes>
@@ -49,7 +68,6 @@ export default function App() {
         <Route path="/daftar" element={<Register />} />
         <Route path="/keranjang" element={<Cart />} />
         <Route path="/checkout" element={<Checkout />} />
-        <Route path="/ai" element={<QlapaAI />} />
         <Route path="/chat" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
         <Route path="/profil" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
         <Route path="/toko/buka" element={<ProtectedRoute><OpenStore /></ProtectedRoute>} />
@@ -63,6 +81,7 @@ export default function App() {
       </Routes>
       {!hideFooter && <Footer />}
       </div>
+      {!hideShell && <FloatingAI />}
     </>
   );
 }

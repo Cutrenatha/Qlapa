@@ -3,7 +3,22 @@ import { useParams, useNavigate } from "react-router-dom";
 import api from "../api.js";
 import { useToast } from "../context/ToastContext.jsx";
 
-const CATEGORIES = ["Ampas", "Tempurung", "Sabut", "Daun", "Air Kelapa"];
+const CATEGORIES = [
+  "Ampas",
+  "Tempurung",
+  "Sabut",
+  "Daun",
+  "Air Kelapa",
+  "Cocopeat",
+  "Cocofiber",
+  "Briket Arang",
+  "Arang Aktif",
+  "Nata de Coco",
+  "Minyak Kelapa",
+  "VCO",
+  "Tepung Kelapa",
+  "Kerajinan Kelapa",
+];
 const UNITS = ["kg", "ons", "gram", "liter", "ikat", "karung", "pcs"];
 
 export default function EditProduct() {

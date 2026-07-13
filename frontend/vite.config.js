@@ -14,6 +14,11 @@ export default defineConfig({
         target: "http://localhost:5000",
         changeOrigin: true,
       },
+      "/ai_service": {
+        target: "http://localhost:8002",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/ai_service/, ""),
+      },
     },
   },
 });

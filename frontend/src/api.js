@@ -12,4 +12,8 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+export const aiApi = axios.create({
+  baseURL: import.meta.env.VITE_AI_URL || "/ai_service",
+});
+
 export default api;

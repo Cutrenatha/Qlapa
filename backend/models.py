@@ -66,7 +66,8 @@ class Product(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     seller_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     name = db.Column(db.String(150), nullable=False)
-    category = db.Column(db.String(50), nullable=False)  # Segar, Kering
+    category = db.Column(db.String(50), nullable=False)  # Bahan Baku, Produk Olahan
+    type = db.Column(db.String(100), nullable=False, default="Lainnya")  # Tempurung, Briket, dll
     price = db.Column(db.Float, nullable=False)
     stock = db.Column(db.Float, nullable=False, default=0)
     unit = db.Column(db.String(20), default="kg")
@@ -94,6 +95,7 @@ class Product(db.Model):
             "seller_id": self.seller_id,
             "name": self.name,
             "category": self.category,
+            "type": self.type,
             "price": self.price,
             "stock": self.stock,
             "unit": self.unit,

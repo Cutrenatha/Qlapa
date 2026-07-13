@@ -217,16 +217,26 @@ export default function ProductDetail() {
     return <div className="empty-state"><div className="spinner" style={{ margin: "0 auto" }} /></div>;
   }
 
-  const askAI = () => {
+  const askAI = async () => {
     setAiReply("");
     setIsTyping(true);
     setAiLoading(true);
 
-    setTimeout(() => {
+    try {
+      const response = await api.get("/ai/recommendation", {
+        params: {
+          category: product.type || product.category || product.name,
+          product_name: product.name,
+        },
+      });
+      setAiReply(response.data.recommendation);
+    } catch (err) {
+      console.error(err);
+      setAiReply("Gagal mendapatkan saran dari Qlapa AI. Silakan coba lagi 🌱.");
+    } finally {
       setIsTyping(false);
-      setAiReply(getAiResponse(product.name));
       setAiLoading(false);
-    }, 1800);
+    }
   };
 
   const handleAddToCart = () => {

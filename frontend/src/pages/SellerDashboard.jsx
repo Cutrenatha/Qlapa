@@ -4,7 +4,7 @@ import {
   Store, Package, ShoppingBag, TrendingUp, Plus,
   Edit2, Trash2, Check, X, Truck, Clock, CheckCircle2,
   XCircle, MapPin, Calendar, ArrowRight, ChevronRight,
-  BarChart2, Star, Tag, Info, List
+  BarChart2, Star, Tag, Info, List, RotateCcw
 } from "lucide-react";
 import api from "../api.js";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -13,13 +13,13 @@ import "./SellerDashboard.css";
 
 /* ── Constants ── */
 const STATUS_META = {
-  menunggu_konfirmasi: {
-    label: "Menunggu",
+  belum_bayar: {
+    label: "Belum Bayar",
     bg: "#FEF3C7",
     fg: "#B45309",
     Icon: Clock,
   },
-  diproses: {
+  dikemas: {
     label: "Dikemas",
     bg: "#E0E7FF",
     fg: "#4338CA",
@@ -37,10 +37,16 @@ const STATUS_META = {
     fg: "#065F46",
     Icon: CheckCircle2,
   },
-  ditolak: {
-    label: "Ditolak",
+  pengembalian: {
+    label: "Pengembalian",
     bg: "#FEE2E2",
     fg: "#991B1B",
+    Icon: RotateCcw,
+  },
+  dibatalkan: {
+    label: "Dibatalkan",
+    bg: "#F3F4F6",
+    fg: "#6B7280",
     Icon: XCircle,
   },
 };
@@ -98,7 +104,7 @@ const MOCK_DATA = {
   orders: [
     {
       id: 101,
-      status: "menunggu_konfirmasi",
+      status: "dikemas",
       payment_status: "paid",
       buyer_name: "Budi Santoso",
       shipping_address: "Jl. Teuku Umar No. 12, Banda Aceh",
@@ -113,7 +119,7 @@ const MOCK_DATA = {
     },
     {
       id: 100,
-      status: "diproses", // Dikemas
+      status: "dikemas", // Dikemas
       payment_status: "paid",
       buyer_name: "Siti Rahmah",
       shipping_address: "Jl. Sudirman No. 45, Lhokseumawe",
@@ -310,7 +316,7 @@ function DashboardShell() {
 function BerandaTab({ data }) {
   const { store, summary, orders } = data;
   const { user } = useAuth();
-  const pendingOrders = orders.filter((o) => o.status === "menunggu_konfirmasi");
+  const pendingOrders = orders.filter((o) => o.status === "dikemas");
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
@@ -323,7 +329,7 @@ function BerandaTab({ data }) {
           </div>
           <div className="dashboard-alert-content">
             <p className="dashboard-alert-title">
-              {pendingOrders.length} pesanan menunggu konfirmasi Anda
+              {pendingOrders.length} pesanan baru perlu dikemas
             </p>
             <p className="dashboard-alert-sub">
               Pembeli sedang menunggu. Segera proses agar reputasi toko terjaga.
@@ -610,11 +616,12 @@ function PesananTab({ orders, onUpdateStatus }) {
 
   const tabs = [
     { key: "semua", label: "Semua" },
-    { key: "menunggu_konfirmasi", label: "Menunggu" },
-    { key: "diproses", label: "Dikemas" },
+    { key: "belum_bayar", label: "Belum Bayar" },
+    { key: "dikemas", label: "Dikemas" },
     { key: "dikirim", label: "Dikirim" },
     { key: "selesai", label: "Selesai" },
-    { key: "ditolak", label: "Ditolak" },
+    { key: "pengembalian", label: "Pengembalian" },
+    { key: "dibatalkan", label: "Dibatalkan" },
   ];
 
   const filtered = filter === "semua"
@@ -656,7 +663,7 @@ function PesananTab({ orders, onUpdateStatus }) {
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {filtered.map((o) => {
-            const meta = STATUS_META[o.status] || STATUS_META.menunggu_konfirmasi;
+            const meta = STATUS_META[o.status] || STATUS_META.belum_bayar;
             const { Icon: StatusIcon } = meta;
             return (
               <div key={o.id} className="dashboard-order-card">
@@ -738,33 +745,33 @@ function PesananTab({ orders, onUpdateStatus }) {
                 </div>
 
                 {/* Actions */}
-                {(o.status === "menunggu_konfirmasi" || o.status === "diproses") && (
+                {(o.status === "dikemas" || o.status === "pengembalian") && (
                   <div className="dashboard-order-card-foot">
-                    {o.status === "menunggu_konfirmasi" && (
+                    {o.status === "dikemas" && (
                       <>
                         <button
                           className="dashboard-btn-action-primary"
-                          onClick={() => onUpdateStatus(o.id, "diproses")}
+                          onClick={() => onUpdateStatus(o.id, "dikirim")}
                         >
-                          <Check size={14} strokeWidth={2.5} />
-                          Terima Pesanan
+                          <Truck size={14} strokeWidth={2} />
+                          Tandai Dikirim
                         </button>
                         <button
                           className="dashboard-btn-action-danger"
-                          onClick={() => onUpdateStatus(o.id, "ditolak")}
+                          onClick={() => onUpdateStatus(o.id, "dibatalkan")}
                         >
                           <X size={14} strokeWidth={2.5} />
-                          Tolak
+                          Batalkan Pesanan
                         </button>
                       </>
                     )}
-                    {o.status === "diproses" && (
+                    {o.status === "pengembalian" && (
                       <button
                         className="dashboard-btn-action-primary"
-                        onClick={() => onUpdateStatus(o.id, "dikirim")}
+                        onClick={() => onUpdateStatus(o.id, "dibatalkan")}
                       >
-                        <Truck size={14} strokeWidth={2} />
-                        Tandai Dikirim
+                        <Check size={14} strokeWidth={2.5} />
+                        Setujui Pengembalian Dana
                       </button>
                     )}
                   </div>

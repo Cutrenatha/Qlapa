@@ -208,20 +208,20 @@ export default function ProductList() {
   const [showFilters, setShowFilters] = useState(false);
 
   // Multi-select state variables
-  const [selectedConditions, setSelectedConditions] = useState(
-    searchParams.get("condition") ? [searchParams.get("condition")] : []
-  );
+  const [selectedConditions, setSelectedConditions] = useState([]);
   const [selectedRegions, setSelectedRegions] = useState([]);
-  const [selectedCategories, setSelectedCategories] = useState([]);
+  const [selectedCategories, setSelectedCategories] = useState(
+    searchParams.get("category") ? [searchParams.get("category")] : []
+  );
   const [selectedLocations, setSelectedLocations] = useState([]);
 
-  // Derived state/helper for condition tabs compatibility
-  const condition = selectedConditions.length === 1 ? selectedConditions[0] : "";
-  const setCondition = (condValue) => {
-    if (condValue === "") {
-      setSelectedConditions([]);
+  // Derived state/helper for category tabs compatibility
+  const categoryTab = selectedCategories.length === 1 ? selectedCategories[0] : "";
+  const setCategoryTab = (catValue) => {
+    if (catValue === "") {
+      setSelectedCategories([]);
     } else {
-      setSelectedConditions([condValue]);
+      setSelectedCategories([catValue]);
     }
   };
 
@@ -610,29 +610,29 @@ export default function ProductList() {
             </div>
           )}
 
-          {/* Condition Tabs */}
+          {/* Category Tabs */}
           <div style={{ display: "flex", gap: 4, borderTop: "1px solid var(--line)", marginTop: 4 }}>
             <button
-              onClick={() => setCondition("")}
+              onClick={() => setCategoryTab("")}
               style={{
                 padding: "12px 20px", border: "none", background: "none", cursor: "pointer",
                 fontSize: "0.88rem", fontWeight: 600,
-                color: condition === "" ? "var(--ink)" : "var(--ink-soft)",
-                borderBottom: `2.5px solid ${condition === "" ? "var(--ink)" : "transparent"}`,
+                color: categoryTab === "" ? "var(--ink)" : "var(--ink-soft)",
+                borderBottom: `2.5px solid ${categoryTab === "" ? "var(--ink)" : "transparent"}`,
                 transition: "all 0.2s",
               }}
             >
               Semua
             </button>
-            {CONDITIONS.map((c) => (
+            {["Bahan Baku", "Produk Olahan"].map((c) => (
               <button
                 key={c}
-                onClick={() => setCondition(condition === c ? "" : c)}
+                onClick={() => setCategoryTab(categoryTab === c ? "" : c)}
                 style={{
                   padding: "12px 20px", border: "none", background: "none", cursor: "pointer",
                   fontSize: "0.88rem", fontWeight: 600,
-                  color: condition === c ? "var(--ink)" : "var(--ink-soft)",
-                  borderBottom: `2.5px solid ${condition === c ? "var(--ink)" : "transparent"}`,
+                  color: categoryTab === c ? "var(--ink)" : "var(--ink-soft)",
+                  borderBottom: `2.5px solid ${categoryTab === c ? "var(--ink)" : "transparent"}`,
                   transition: "all 0.2s",
                 }}
               >
@@ -752,18 +752,16 @@ function ProductCard({ product: p }) {
             onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.05)"}
             onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
           />
-          {/* Condition badge */}
+          {/* Type badge */}
           <span style={{
             position: "absolute", top: 12, left: 12,
             padding: "4px 11px", borderRadius: 999,
             fontSize: "0.72rem", fontWeight: 700,
-            background: p.condition === "Segar"
-              ? "rgba(52, 199, 89, 0.88)"
-              : "rgba(78, 72, 57, 0.88)",
+            background: "rgba(92, 61, 46, 0.88)",
             color: "#fff",
             backdropFilter: "blur(4px)",
           }}>
-            {p.condition}
+            {p.type}
           </span>
         </div>
 

@@ -4,8 +4,26 @@ import api from "../api.js";
 import { useToast } from "../context/ToastContext.jsx";
 import { Camera, X, RefreshCcw, Sparkles } from "lucide-react";
 
-const CATEGORIES = ["Ampas", "Tempurung", "Sabut", "Daun", "Air Kelapa"];
-const CONDITIONS = ["Kering", "Segar"];
+const KATEGORI_OPTIONS = ["Bahan Baku", "Produk Olahan"];
+
+const JENIS_BY_KATEGORI = {
+  "Bahan Baku": ["Tempurung", "Sabut", "Ampas", "Daun", "Air Kelapa", "Lainnya"],
+  "Produk Olahan": [
+    "Briket",
+    "Cocopeat",
+    "Cocofiber",
+    "Arang Aktif",
+    "Kerajinan",
+    "Pot Sabut",
+    "Keset Sabut",
+    "Tali Sabut",
+    "Pupuk Organik",
+    "Pakan Ternak",
+    "Lainnya",
+  ],
+};
+
+const CONDITIONS = ["Kering", "Basah", "Segar"];
 const UNITS = ["kg", "ons", "gram", "liter", "ikat", "karung", "pcs"];
 
 export default function AddProduct() {
@@ -15,7 +33,9 @@ export default function AddProduct() {
 
   const [form, setForm] = useState({
     name: "",
-    category: "Tempurung",
+    category: "Bahan Baku",
+    type: "Tempurung",
+    customType: "",
     price: "",
     stock: "",
     unit: "kg",
@@ -24,6 +44,7 @@ export default function AddProduct() {
     quality: "",
     manual_note: "",
   });
+
   const [aiDesc, setAiDesc] = useState("");
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState("");
@@ -33,6 +54,17 @@ export default function AddProduct() {
   const [saving, setSaving] = useState(false);
 
   const setField = (key, value) => setForm((f) => ({ ...f, [key]: value }));
+
+  const onKategoriChange = (val) => {
+    const firstJenis = JENIS_BY_KATEGORI[val]?.[0] || "";
+    setForm((f) => ({ ...f, category: val, type: firstJenis, customType: "" }));
+  };
+
+  const onJenisChange = (val) => {
+    setForm((f) => ({ ...f, type: val, customType: "" }));
+  };
+
+  const effectiveType = form.type === "Lainnya" ? form.customType : form.type;
 
   const pickFile = async (file) => {
     if (!file) return;
@@ -49,7 +81,6 @@ export default function AddProduct() {
     setAnalyzed(false);
     setLowConfidence(false);
     setForm((f) => ({ ...f, image_url: "" }));
-    // Auto-analyze immediately after picking the photo
     await analyzeImageFile(file);
   };
 
@@ -68,7 +99,17 @@ export default function AddProduct() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  // Core analyze logic accepts a File object so it can be called auto (on pick) or manually
+  const mapAiType = (aiType) => {
+    if (!aiType) return null;
+    const lower = aiType.toLowerCase();
+    const allJenis = [...JENIS_BY_KATEGORI["Bahan Baku"], ...JENIS_BY_KATEGORI["Produk Olahan"]];
+    for (const j of allJenis) {
+      if (j === "Lainnya") continue;
+      if (lower.includes(j.toLowerCase())) return j;
+    }
+    return null;
+  };
+
   const analyzeImageFile = async (file) => {
     if (!file) return;
     setAnalyzing(true);
@@ -79,17 +120,17 @@ export default function AddProduct() {
         headers: { "Content-Type": "multipart/form-data" },
       });
       const r = res.data;
-      // Map backend category labels to frontend CATEGORIES list
-      const mapCategory = (cat) => {
-        if (!cat) return "Tempurung";
-        const normalized = cat.toLowerCase();
-        if (normalized.includes("tempurung")) return "Tempurung";
-        if (normalized.includes("sabut")) return "Sabut";
-        if (normalized.includes("ampas")) return "Ampas";
-        if (normalized.includes("daun")) return "Daun";
-        if (normalized.includes("air")) return "Air Kelapa";
-        return "Tempurung";
-      };
+
+      const mappedType = mapAiType(r.type || r.category || "");
+      const aiCategory =
+        r.category === "Produk Olahan" || r.category === "Bahan Baku"
+          ? r.category
+          : mappedType
+          ? JENIS_BY_KATEGORI["Bahan Baku"].includes(mappedType)
+            ? "Bahan Baku"
+            : "Produk Olahan"
+          : form.category;
+
       const mapCondition = (cond) => {
         if (!cond) return "Kering";
         const c = cond.toLowerCase();
@@ -102,13 +143,16 @@ export default function AddProduct() {
         ...f,
         name: r.name || f.name,
         image_url: r.image_url || f.image_url,
-        category: mapCategory(r.category),
+        category: aiCategory,
+        type: mappedType || f.type,
+        customType: "",
         condition: mapCondition(r.condition),
         quality: r.quality || f.quality,
-        stock: r.stock_estimate != null ? String(r.stock_estimate) : f.stock,
+        stock: f.stock,
         price: r.price_estimate != null ? String(r.price_estimate) : f.price,
       }));
-      setAiDesc(r.ai_description || "");
+
+      setAiDesc(r.ai_description || r.description || "");
       setAnalyzed(true);
       setLowConfidence(!!r.low_confidence);
       const confText = r.confidence != null ? ` · Keyakinan AI: ${r.confidence}/5` : "";
@@ -119,7 +163,7 @@ export default function AddProduct() {
       }
     } catch (err) {
       showToast(
-        err.response?.data?.error || "Gagal menganalisis gambar",
+        err.response?.data?.detail || err.response?.data?.error || "Gagal menganalisis gambar",
         "error",
       );
     } finally {
@@ -127,7 +171,6 @@ export default function AddProduct() {
     }
   };
 
-  // Manual re-analyze (uses current imageFile state)
   const analyzeImage = () => analyzeImageFile(imageFile);
 
   const generateDesc = async () => {
@@ -136,11 +179,14 @@ export default function AddProduct() {
       return;
     }
     try {
-      const res = await api.post("/products/generate-description", form);
-      setForm((f) => ({
-        ...f,
-        name: res.data.name || f.name,
-      }));
+      const res = await api.post("/products/generate-description", {
+        name: form.name,
+        category: form.category,
+        type: effectiveType,
+        condition: form.condition,
+        notes: form.manual_note,
+      });
+      setForm((f) => ({ ...f, name: res.data.name || f.name }));
       setAiDesc(res.data.ai_description);
       showToast("AI berhasil menyarankan data produk.");
     } catch {
@@ -154,10 +200,23 @@ export default function AddProduct() {
       showToast("Unggah dan analisis foto produk terlebih dahulu", "error");
       return;
     }
+    if (form.type === "Lainnya" && !form.customType.trim()) {
+      showToast("Isi jenis produk pada kolom 'Jenis Lainnya'", "error");
+      return;
+    }
     setSaving(true);
     try {
       await api.post("/products", {
-        ...form,
+        name: form.name,
+        category: form.category,
+        type: effectiveType,
+        price: form.price,
+        stock: form.stock,
+        unit: form.unit,
+        image_url: form.image_url,
+        condition: form.condition,
+        quality: form.quality,
+        manual_note: form.manual_note,
         ai_description: aiDesc || undefined,
       });
       showToast("Produk berhasil dipublikasikan!");
@@ -168,6 +227,8 @@ export default function AddProduct() {
       setSaving(false);
     }
   };
+
+  const jenisOptions = JENIS_BY_KATEGORI[form.category] || [];
 
   return (
     <div className="section container" style={{ maxWidth: 640, marginTop: 24 }}>
@@ -203,99 +264,41 @@ export default function AddProduct() {
                 cursor: "pointer",
                 background: "rgba(0, 0, 0, 0.01)",
                 textAlign: "center",
-                transition: "all 0.2s ease"
+                transition: "all 0.2s ease",
               }}
             >
               <div style={{ marginBottom: 8, color: "var(--ink-soft)" }}><Camera size={48} strokeWidth={1.5} /></div>
-              <strong style={{ color: "var(--brown-500)", fontSize: "0.95rem" }}>
-                Klik untuk pilih foto
-              </strong>
+              <strong style={{ color: "var(--brown-500)", fontSize: "0.95rem" }}>Klik untuk pilih foto</strong>
               <span className="field-hint" style={{ fontSize: "0.78rem", color: "var(--ink-soft)" }}>
-                atau tarik & lepas file ke sini &middot; JPG, PNG, WEBP, maks 8MB
+                atau tarik &amp; lepas file ke sini &middot; JPG, PNG, WEBP, maks 8MB
               </span>
             </label>
           ) : (
             <div>
-              <div
-                style={{
-                  width: "100%",
-                  maxHeight: 260,
-                  overflow: "hidden",
-                  borderRadius: "var(--radius-md)",
-                  border: "1px solid var(--line)",
-                  background: "var(--cream-2)",
-                }}
-              >
-                <img
-                  src={imagePreview}
-                  alt="Preview produk"
-                  style={{
-                    width: "100%",
-                    maxHeight: 260,
-                    objectFit: "cover",
-                    display: "block",
-                  }}
-                />
+              <div style={{ width: "100%", maxHeight: 260, overflow: "hidden", borderRadius: "var(--radius-md)", border: "1px solid var(--line)", background: "var(--cream-2)" }}>
+                <img src={imagePreview} alt="Preview produk" style={{ width: "100%", maxHeight: 260, objectFit: "cover", display: "block" }} />
               </div>
-
-              <div
-                className="row between wrap gap-12"
-                style={{ marginTop: 14 }}
-              >
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-sm"
-                  onClick={removeImage}
-                  disabled={analyzing}
-                  style={{ display: "flex", alignItems: "center", gap: 6 }}
-                >
+              <div className="row between wrap gap-12" style={{ marginTop: 14 }}>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={removeImage} disabled={analyzing} style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   <X size={14} /> Ganti Foto
                 </button>
-                <button
-                  type="button"
-                  className="btn btn-primary btn-sm"
-                  onClick={analyzeImage}
-                  disabled={analyzing}
-                  style={{ display: "flex", alignItems: "center", gap: 6 }}
-                >
+                <button type="button" className="btn btn-primary btn-sm" onClick={analyzeImage} disabled={analyzing} style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   {analyzing
                     ? "Menganalisis foto…"
                     : analyzed
-                      ? <><RefreshCcw size={14} /> Analisis Ulang</>
-                      : <><Sparkles size={14} /> Analisis Foto dengan Qlapa AI</>}
+                    ? <><RefreshCcw size={14} /> Analisis Ulang</>
+                    : <><Sparkles size={14} /> Analisis Foto dengan Qlapa AI</>}
                 </button>
               </div>
 
               {analyzed && !lowConfidence && (
-                <div
-                  className="row gap-8"
-                  style={{
-                    marginTop: 14,
-                    padding: "10px 14px",
-                    background: "var(--green-100)",
-                    borderRadius: "var(--radius-sm)",
-                    fontSize: "0.85rem",
-                    color: "var(--green-900)",
-                  }}
-                >
-                  ✅ Selesai dianalisis! Nama, Kategori &amp; estimasi Harga sudah terisi otomatis —
-                  silakan cek &amp; sesuaikan.
+                <div className="row gap-8" style={{ marginTop: 14, padding: "10px 14px", background: "var(--green-100)", borderRadius: "var(--radius-sm)", fontSize: "0.85rem", color: "var(--green-900)" }}>
+                  ✅ Selesai dianalisis! Nama, Kategori &amp; Jenis sudah terisi otomatis — silakan cek &amp; sesuaikan.
                 </div>
               )}
               {analyzed && lowConfidence && (
-                <div
-                  className="row gap-8"
-                  style={{
-                    marginTop: 14,
-                    padding: "10px 14px",
-                    background: "#FEF9C3",
-                    borderRadius: "var(--radius-sm)",
-                    fontSize: "0.85rem",
-                    color: "#92400E",
-                    border: "1px solid #FDE68A",
-                  }}
-                >
-                  ⚠️ AI kurang yakin pada foto ini — mohon periksa dan koreksi Nama, Kategori &amp; Harga secara manual.
+                <div className="row gap-8" style={{ marginTop: 14, padding: "10px 14px", background: "#FEF9C3", borderRadius: "var(--radius-sm)", fontSize: "0.85rem", color: "#92400E", border: "1px solid #FDE68A" }}>
+                  ⚠️ AI kurang yakin pada foto ini — mohon periksa dan koreksi Nama, Kategori &amp; Jenis secara manual.
                 </div>
               )}
             </div>
@@ -311,14 +314,8 @@ export default function AddProduct() {
         </div>
 
         {/* ---------- STEP 2: DETAIL PRODUK ---------- */}
-        <div
-          className="card"
-          style={{ padding: 24, opacity: imageFile ? 1 : 0.55, borderRadius: 16, border: "1px solid rgba(0,0,0,0.05)", boxShadow: "0 2px 8px rgba(0,0,0,0.02)", background: "#ffffff" }}
-        >
-          <fieldset
-            disabled={false}
-            style={{ border: "none", padding: 0, margin: 0 }}
-          >
+        <div className="card" style={{ padding: 24, opacity: imageFile ? 1 : 0.55, borderRadius: 16, border: "1px solid rgba(0,0,0,0.05)", boxShadow: "0 2px 8px rgba(0,0,0,0.02)", background: "#ffffff" }}>
+          <fieldset disabled={false} style={{ border: "none", padding: 0, margin: 0 }}>
             <div className="row gap-8" style={{ marginBottom: 16, alignItems: "center" }}>
               <span className="badge" style={{ background: "var(--brown-500)", color: "#fff", border: "none", padding: "4px 10px", borderRadius: 6, fontWeight: 600, fontSize: "0.72rem" }}>Langkah 2</span>
               <strong style={{ fontSize: "0.95rem" }}>Detail Produk</strong>
@@ -339,30 +336,50 @@ export default function AddProduct() {
               />
             </div>
 
+            {/* Kategori & Jenis */}
             <div className="row gap-16 wrap">
               <div className="field" style={{ flex: "1 1 160px" }}>
-                <label>Kategori Limbah</label>
-                <select
-                  value={form.category}
-                  onChange={(e) => setField("category", e.target.value)}
-                >
-                  {CATEGORIES.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
+                <label>Kategori</label>
+                <select value={form.category} onChange={(e) => onKategoriChange(e.target.value)}>
+                  {KATEGORI_OPTIONS.map((k) => (
+                    <option key={k} value={k}>{k}</option>
                   ))}
                 </select>
               </div>
               <div className="field" style={{ flex: "1 1 160px" }}>
+                <label>Jenis Produk</label>
+                <select value={form.type} onChange={(e) => onJenisChange(e.target.value)}>
+                  {jenisOptions.map((j) => (
+                    <option key={j} value={j}>{j}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Input manual jika pilih Lainnya */}
+            {form.type === "Lainnya" && (
+              <div className="field">
+                <label>
+                  Jenis Lainnya
+                  <span style={{ fontSize: "0.75rem", color: "var(--ink-soft)", marginLeft: 6 }}>
+                    (harus berkaitan dengan limbah kelapa)
+                  </span>
+                </label>
+                <input
+                  required
+                  value={form.customType}
+                  onChange={(e) => setField("customType", e.target.value)}
+                  placeholder="mis. Sabut Kelapa Olahan, Tempurung Bubuk..."
+                />
+              </div>
+            )}
+
+            <div className="row gap-16 wrap">
+              <div className="field" style={{ flex: "1 1 160px" }}>
                 <label>Kondisi</label>
-                <select
-                  value={form.condition}
-                  onChange={(e) => setField("condition", e.target.value)}
-                >
+                <select value={form.condition} onChange={(e) => setField("condition", e.target.value)}>
                   {CONDITIONS.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
+                    <option key={c} value={c}>{c}</option>
                   ))}
                 </select>
               </div>
@@ -391,14 +408,9 @@ export default function AddProduct() {
               </div>
               <div className="field" style={{ flex: "1 1 100px" }}>
                 <label>Satuan</label>
-                <select
-                  value={form.unit}
-                  onChange={(e) => setField("unit", e.target.value)}
-                >
+                <select value={form.unit} onChange={(e) => setField("unit", e.target.value)}>
                   {(UNITS.includes(form.unit) ? UNITS : [...UNITS, form.unit]).map((u) => (
-                    <option key={u} value={u}>
-                      {u}
-                    </option>
+                    <option key={u} value={u}>{u}</option>
                   ))}
                 </select>
               </div>
@@ -424,21 +436,8 @@ export default function AddProduct() {
         </div>
 
         {/* ---------- STEP 3: DESKRIPSI AI ---------- */}
-        <div
-          className="card"
-          style={{
-            padding: 20,
-            background: "var(--cream-100)",
-            border: "1px solid var(--brown-300)",
-            borderRadius: 16,
-            margin: "20px 0",
-            opacity: imageFile ? 1 : 0.55,
-          }}
-        >
-          <fieldset
-            disabled={false}
-            style={{ border: "none", padding: 0, margin: 0 }}
-          >
+        <div className="card" style={{ padding: 20, background: "var(--cream-100)", border: "1px solid var(--brown-300)", borderRadius: 16, margin: "20px 0", opacity: imageFile ? 1 : 0.55 }}>
+          <fieldset disabled={false} style={{ border: "none", padding: 0, margin: 0 }}>
             <div className="row between wrap gap-8" style={{ marginBottom: 12, alignItems: "center" }}>
               <span className="row gap-4" style={{ alignItems: "center", fontWeight: 600, fontSize: "0.95rem", color: "var(--brown-800)" }}>
                 Deskripsi Otomatis Qlapa AI
