@@ -428,11 +428,13 @@ export default function ProductDetail() {
               <h3 style={{ fontSize: "1.05rem", fontWeight: 700, color: "var(--ink)", marginBottom: 14 }}>Spesifikasi</h3>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.88rem" }}>
                 <tbody>
-                  <SpecRow label="Jenis" value={product.name} />
-                  <SpecRow label="Asal" value={product.seller?.store_location || product.location || "Aceh Besar, Aceh"} />
-                  <SpecRow label="Berat" value={product.weight || "-"} />
-                  <SpecRow label="Panjang" value={product.length || "-"} />
-                  <SpecRow label="Kadar Air" value={product.moisture || "-"} />
+                  <SpecRow label="Kategori" value={product.category || "-"} />
+                  <SpecRow label="Jenis" value={product.type || "-"} />
+                  <SpecRow label="Kondisi" value={product.condition || "-"} />
+                  {product.quality && <SpecRow label="Kualitas" value={product.quality} />}
+                  <SpecRow label="Stok Tersedia" value={`${product.stock} ${product.unit}`} />
+                  {product.manual_note && <SpecRow label="Catatan Penjual" value={product.manual_note} />}
+                  <SpecRow label="Lokasi Penjual" value={product.seller?.store_location || "-"} />
                 </tbody>
               </table>
             </div>

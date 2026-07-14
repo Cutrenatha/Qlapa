@@ -2,24 +2,36 @@ import React, { useEffect, useState } from "react";
 import api from "../api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
+import { ShoppingBag, Truck, CheckCircle, Clock, X, AlertTriangle, Package, PackageOpen, Undo2 } from "lucide-react";
+import "./SellerDashboard.css"; // Reuse seller dashboard css for identical design
 
-const STATUS_LABEL = {
-  belum_bayar: "Belum Bayar",
-  dikemas: "Dikemas",
-  dikirim: "Dalam Pengiriman",
-  selesai: "Selesai",
-  pengembalian: "Pengembalian",
-  dibatalkan: "Dibatalkan",
+const STATUS_META = {
+  belum_bayar: { label: "Belum Bayar", bg: "#F3F4F6", fg: "#6B7280", Icon: Clock },
+  menunggu_konfirmasi: { label: "Menunggu Konfirmasi", bg: "#FEF3C7", fg: "#D97706", Icon: Clock },
+  diproses: { label: "Diproses", bg: "#DBEAFE", fg: "#2563EB", Icon: Package },
+  dikemas: { label: "Dikemas", bg: "#E0E7FF", fg: "#4F46E5", Icon: PackageOpen },
+  dikirim: { label: "Dikirim", bg: "#FEF08A", fg: "#CA8A04", Icon: Truck },
+  selesai: { label: "Selesai", bg: "#D1FAE5", fg: "#059669", Icon: CheckCircle },
+  pengembalian: { label: "Pengembalian", bg: "#FEE2E2", fg: "#DC2626", Icon: AlertTriangle },
+  dibatalkan: { label: "Dibatalkan", bg: "#F3F4F6", fg: "#4B5563", Icon: X },
 };
 
-const STATUS_COLOR = {
-  belum_bayar: "badge-outline",
-  dikemas: "badge",
-  dikirim: "badge-brown",
-  selesai: "badge",
-  pengembalian: "badge-outline",
-  dibatalkan: "badge-outline",
-};
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+
+function formatOrderDate(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return `${String(d.getDate()).padStart(2, "0")} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function orderCode(o) {
+  if (!o.created_at) return `ORD-${String(o.id).padStart(3, "0")}`;
+  const d = new Date(o.created_at);
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yy = String(d.getFullYear()).slice(2);
+  return `ORD-${dd}${mm}${yy}-${String(o.id).padStart(3, "0")}`;
+}
 
 export default function Orders() {
   const { user } = useAuth();
@@ -72,23 +84,12 @@ export default function Orders() {
     : orders.filter((o) => o.status === filter);
 
   return (
-    <div className="section container" style={{ minHeight: '80vh', maxWidth: 800 }}>
+    <div className="section" style={{ minHeight: '80vh', padding: '40px 40px 80px 40px', width: '100%', boxSizing: 'border-box' }}>
       <h1 style={{ fontSize: "2.2rem", fontFamily: "var(--font-display)", fontWeight: 700, marginBottom: 20, color: "var(--ink)" }}>
         Riwayat Pesanan Belanja
       </h1>
 
-      {/* Categories Tabs */}
-      <div 
-        style={{ 
-          display: "flex", 
-          gap: 8, 
-          overflowX: "auto", 
-          paddingBottom: 12, 
-          marginBottom: 28, 
-          borderBottom: "1px solid var(--line)",
-          scrollbarWidth: "none"
-        }}
-      >
+      <div className="dashboard-filter-row" style={{ marginBottom: 28, overflowX: "auto" }}>
         {tabs.map((t) => {
           const count = t.key === "semua"
             ? orders.length
@@ -97,106 +98,142 @@ export default function Orders() {
             <button
               key={t.key}
               onClick={() => setFilter(t.key)}
-              style={{
-                padding: "8px 16px",
-                borderRadius: 20,
-                border: "none",
-                fontSize: "0.85rem",
-                fontWeight: 600,
-                cursor: "pointer",
-                background: filter === t.key ? "var(--ink)" : "rgba(0,0,0,0.03)",
-                color: filter === t.key ? "#fff" : "var(--ink-soft)",
-                whiteSpace: "nowrap",
-                transition: "all 0.2s"
-              }}
+              className={`dashboard-filter-tab ${filter === t.key ? "active" : ""}`}
             >
-              {t.label} {count > 0 && `(${count})`}
+              {t.label}
+              {count > 0 && (
+                <span className="dashboard-filter-count">
+                  {count}
+                </span>
+              )}
             </button>
           );
         })}
       </div>
 
       {filteredOrders.length === 0 ? (
-        <div className="empty-state">
-          <p style={{ fontSize: "1.1rem" }}>Belum ada pesanan dengan kategori ini.</p>
+        <div className="dashboard-empty-state">
+          <ShoppingBag size={36} color="#D1D5DB" strokeWidth={1.2} />
+          <h3 className="dashboard-empty-title">Tidak ada pesanan</h3>
+          <p className="dashboard-empty-sub">Belum ada pesanan dengan kategori ini.</p>
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          {filteredOrders.map((o) => (
-            <div key={o.id} className="card" style={{ padding: 24, border: "1px solid rgba(0,0,0,0.06)", boxShadow: "var(--shadow-sm)" }}>
-              <div className="row between" style={{ marginBottom: 12, alignItems: "center" }}>
-                <div className="row gap-8" style={{ alignItems: "center" }}>
-                  <strong style={{ fontSize: "1.05rem", color: "var(--ink)" }}>#ORD-{String(o.id).padStart(6, "0")}</strong>
-                  <span
-                    className="badge"
-                    style={{
-                      background: o.payment_status === "paid" ? "rgba(52, 199, 89, 0.12)" : (o.midtrans_tx_id && o.midtrans_tx_id.startsWith("COD") ? "rgba(245, 158, 11, 0.12)" : "rgba(255, 59, 48, 0.12)"),
-                      color: o.payment_status === "paid" ? "#248a3d" : (o.midtrans_tx_id && o.midtrans_tx_id.startsWith("COD") ? "#d97706" : "#ff3b30"),
-                      border: "none",
-                      fontSize: "0.78rem",
-                      fontWeight: 600
-                    }}
-                  >
-                    {o.payment_status === "paid" ? "Sudah Dibayar" : (o.midtrans_tx_id && o.midtrans_tx_id.startsWith("COD") ? "COD (Bayar di Tempat)" : "Belum Dibayar")}
-                  </span>
-                </div>
-                <span className={`badge ${STATUS_COLOR[o.status]}`}>{STATUS_LABEL[o.status] || o.status}</span>
-              </div>
-              <p style={{ fontSize: "0.88rem", color: "var(--ink-soft)", marginBottom: 6 }}>
-                Penjual: {o.seller_store}
-              </p>
-              <p style={{ fontSize: "0.82rem", color: "var(--ink-soft)", marginBottom: 16 }}>
-                📍 {o.shipping_address}
-              </p>
-              
-              <div style={{ background: "rgba(0,0,0,0.01)", padding: 16, borderRadius: 12, border: "1px solid rgba(0,0,0,0.03)" }}>
-                {o.items.map((it) => (
-                  <div key={it.id} className="row between" style={{ fontSize: "0.88rem", marginTop: 8 }}>
-                    <span style={{ color: "var(--ink)" }}>{it.product_name} <span style={{ color: "var(--ink-soft)" }}>× {it.qty}</span></span>
-                    <span style={{ fontWeight: 600, color: "var(--ink)" }}>Rp{it.subtotal.toLocaleString("id-ID")}</span>
+          {filteredOrders.map((o) => {
+            const meta = STATUS_META[o.status] || STATUS_META.belum_bayar;
+            const { Icon: StatusIcon } = meta;
+            return (
+              <div key={o.id} className="dashboard-order-card">
+                {/* Header */}
+                <div className="dashboard-order-card-head">
+                  <div className="dashboard-order-card-title-block">
+                    <div className="dashboard-order-card-icon-wrap" style={{ background: meta.bg }}>
+                      <StatusIcon size={16} color={meta.fg} strokeWidth={2.5} />
+                    </div>
+                    <div>
+                      <p className="dashboard-order-card-code">{orderCode(o)}</p>
+                      <p className="dashboard-order-card-date">{formatOrderDate(o.created_at)}</p>
+                    </div>
                   </div>
-                ))}
-              </div>
-              
-              <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid var(--line)", display: "grid", gap: "6px" }}>
-                <div className="row between" style={{ fontSize: "0.85rem", color: "var(--ink-soft)" }}>
-                  <span>Subtotal Produk</span>
-                  <span>Rp{(o.total - (o.admin_fee || 0) - (o.shipping_cost || 0)).toLocaleString("id-ID")}</span>
+                  <div className="dashboard-order-card-badges">
+                    <span className="status-pill-badge" style={{
+                      background: o.payment_status === "paid" ? "var(--green-100)" : (o.midtrans_tx_id && o.midtrans_tx_id.startsWith("COD") ? "#FEF3C7" : "#FEE2E2"),
+                      color: o.payment_status === "paid" ? "var(--green-900)" : (o.midtrans_tx_id && o.midtrans_tx_id.startsWith("COD") ? "#92400E" : "#991B1B"),
+                    }}>
+                      {o.payment_status === "paid" ? "Lunas" : (o.midtrans_tx_id && o.midtrans_tx_id.startsWith("COD") ? "COD (Bayar di Tempat)" : "Belum Lunas")}
+                    </span>
+                    <span className="status-pill-badge" style={{ background: meta.bg, color: meta.fg }}>
+                      {meta.label}
+                    </span>
+                  </div>
                 </div>
-                <div className="row between" style={{ fontSize: "0.85rem", color: "var(--ink-soft)" }}>
-                  <span>Biaya Admin (10%)</span>
-                  <span>Rp{(o.admin_fee || 0).toLocaleString("id-ID")}</span>
-                </div>
-                <div className="row between" style={{ fontSize: "0.85rem", color: "var(--ink-soft)" }}>
-                  <span>Ongkos Kirim</span>
-                  <span>{o.shipping_cost > 0 ? `Rp${o.shipping_cost.toLocaleString("id-ID")}` : "Gratis (Pick Up)"}</span>
-                </div>
-                <div className="row between" style={{ marginTop: 8, paddingTop: 8, borderTop: "1px dashed var(--line)", fontWeight: 700, fontSize: "1.1rem", color: "var(--ink)" }}>
-                  <span>Total</span>
-                  <span style={{ color: "var(--brand)" }}>Rp{o.total.toLocaleString("id-ID")}</span>
-                </div>
-              </div>
 
-              {/* Action buttons */}
-              <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
-                {o.status === "dikirim" && (
-                  <button className="btn btn-primary" style={{ flex: 1, padding: "10px 20px" }} onClick={() => confirmReceived(o.id)}>
-                    ✅ Konfirmasi Barang Diterima
-                  </button>
-                )}
-                {o.status === "belum_bayar" && (
-                  <button className="btn" style={{ flex: 1, padding: "10px 20px", color: "var(--danger)", border: "1px solid var(--danger)", background: "transparent", borderRadius: 8, cursor: "pointer", fontWeight: 600 }} onClick={() => handleStatusChange(o.id, "dibatalkan", "Pesanan berhasil dibatalkan.")}>
-                    ✕ Batalkan Pesanan
-                  </button>
-                )}
-                {(o.status === "dikemas" || o.status === "dikirim") && (
-                  <button className="btn" style={{ padding: "10px 20px", color: "var(--danger)", background: "transparent", border: "none", cursor: "pointer", fontWeight: 600 }} onClick={() => handleStatusChange(o.id, "pengembalian", "Pengajuan pengembalian dikirim.")}>
-                    ↩ Ajukan Pengembalian
-                  </button>
-                )}
+                {/* Body */}
+                <div className="dashboard-order-card-body">
+                  {/* Seller info */}
+                  <div className="dashboard-order-section">
+                    <p className="dashboard-order-section-label">Penjual</p>
+                    <p className="dashboard-order-buyer-name">{o.seller_store}</p>
+                    {o.shipping_address && (
+                      <p className="dashboard-order-address">{o.shipping_address}</p>
+                    )}
+                  </div>
+
+                  {/* Items */}
+                  <div className="dashboard-order-section">
+                    <p className="dashboard-order-section-label">Produk ({(o.items || []).length})</p>
+                    <div className="dashboard-order-items-list">
+                      {(o.items || []).map((it) => (
+                        <div key={it.id} className="dashboard-order-item-row">
+                          <span className="dashboard-order-item-name">
+                            {it.product_name}
+                            <span className="dashboard-order-item-qty">x{it.qty}</span>
+                          </span>
+                          <span className="dashboard-order-item-subtotal">
+                            Rp {(it.subtotal || 0).toLocaleString("id-ID")}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Total breakdown */}
+                  <div className="dashboard-order-section">
+                    <p className="dashboard-order-section-label">Rincian Biaya</p>
+                    <div className="dashboard-cost-list">
+                      <div className="dashboard-cost-row">
+                        <span>Subtotal Produk</span>
+                        <span>Rp {(o.total - (o.admin_fee || 0) - (o.shipping_cost || 0)).toLocaleString("id-ID")}</span>
+                      </div>
+                      <div className="dashboard-cost-row">
+                        <span>Biaya Admin (10%)</span>
+                        <span>Rp {(o.admin_fee || 0).toLocaleString("id-ID")}</span>
+                      </div>
+                      <div className="dashboard-cost-row">
+                        <span>Ongkos Kirim</span>
+                        <span>{o.shipping_cost > 0 ? `Rp ${o.shipping_cost.toLocaleString("id-ID")}` : "Gratis (Pick Up)"}</span>
+                      </div>
+                      <div className="dashboard-cost-row dashboard-cost-total-row">
+                        <span>Total Transaksi</span>
+                        <span>Rp {(o.total || 0).toLocaleString("id-ID")}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="dashboard-order-card-foot" style={{ justifyContent: "flex-end", borderTop: "1px solid var(--line)", padding: "16px 20px", background: "#F9FAFB" }}>
+                  {o.status === "dikirim" && (
+                    <button
+                      className="dashboard-btn-action-primary"
+                      onClick={() => confirmReceived(o.id)}
+                    >
+                      <CheckCircle size={14} strokeWidth={2} />
+                      Konfirmasi Barang Diterima
+                    </button>
+                  )}
+                  {o.status === "belum_bayar" && (
+                    <button
+                      className="dashboard-btn-action-danger"
+                      onClick={() => handleStatusChange(o.id, "dibatalkan", "Pesanan berhasil dibatalkan.")}
+                    >
+                      <X size={14} strokeWidth={2.5} />
+                      Batalkan Pesanan
+                    </button>
+                  )}
+                  {(o.status === "dikemas" || o.status === "dikirim") && (
+                    <button
+                      style={{ border: "1px solid var(--danger)", color: "var(--danger)", background: "transparent", display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 16px", borderRadius: 8, fontSize: "0.85rem", fontWeight: 600, cursor: "pointer" }}
+                      onClick={() => handleStatusChange(o.id, "pengembalian", "Pengajuan pengembalian dikirim.")}
+                    >
+                      <Undo2 size={14} strokeWidth={2} />
+                      Ajukan Pengembalian
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

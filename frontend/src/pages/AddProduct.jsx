@@ -231,7 +231,7 @@ export default function AddProduct() {
   const jenisOptions = JENIS_BY_KATEGORI[form.category] || [];
 
   return (
-    <div className="section container" style={{ maxWidth: 640, marginTop: 24 }}>
+    <div className="section" style={{ padding: "40px 40px", width: "100%", boxSizing: "border-box" }}>
       <h1 style={{ fontSize: "1.8rem", fontWeight: 600, fontFamily: "var(--font-display)", marginBottom: 6 }}>
         Tambah Produk Baru
       </h1>
@@ -240,8 +240,11 @@ export default function AddProduct() {
       </p>
 
       <form onSubmit={submit}>
+        <div className="add-product-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '40px', alignItems: 'stretch' }}>
+        {/* --- KOLOM KIRI --- */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
         {/* ---------- STEP 1: FOTO PRODUK ---------- */}
-        <div className="card" style={{ padding: 24, marginBottom: 20, borderRadius: 16, border: "1px solid rgba(0,0,0,0.05)" }}>
+        <div className="card" style={{ padding: 24, borderRadius: 16, border: "1px solid rgba(0,0,0,0.05)", display: "flex", flexDirection: "column", flex: 1 }}>
           <div className="row gap-8" style={{ marginBottom: 16, alignItems: "center" }}>
             <span className="badge" style={{ background: "var(--brown-500)", color: "#fff", border: "none", padding: "4px 10px", borderRadius: 6, fontWeight: 600, fontSize: "0.72rem" }}>Langkah 1</span>
             <strong style={{ fontSize: "0.95rem" }}>Unggah Foto Produk</strong>
@@ -261,6 +264,7 @@ export default function AddProduct() {
                 border: "2px dashed rgba(0, 0, 0, 0.08)",
                 borderRadius: 14,
                 padding: "48px 16px",
+                minHeight: 280,
                 cursor: "pointer",
                 background: "rgba(0, 0, 0, 0.01)",
                 textAlign: "center",
@@ -275,8 +279,8 @@ export default function AddProduct() {
             </label>
           ) : (
             <div>
-              <div style={{ width: "100%", maxHeight: 260, overflow: "hidden", borderRadius: "var(--radius-md)", border: "1px solid var(--line)", background: "var(--cream-2)" }}>
-                <img src={imagePreview} alt="Preview produk" style={{ width: "100%", maxHeight: 260, objectFit: "cover", display: "block" }} />
+              <div style={{ width: "100%", maxHeight: 340, overflow: "hidden", borderRadius: "var(--radius-md)", border: "1px solid var(--line)", background: "var(--cream-2)" }}>
+                <img src={imagePreview} alt="Preview produk" style={{ width: "100%", maxHeight: 340, objectFit: "cover", display: "block" }} />
               </div>
               <div className="row between wrap gap-12" style={{ marginTop: 14 }}>
                 <button type="button" className="btn btn-ghost btn-sm" onClick={removeImage} disabled={analyzing} style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -313,9 +317,37 @@ export default function AddProduct() {
           />
         </div>
 
-        {/* ---------- STEP 2: DETAIL PRODUK ---------- */}
-        <div className="card" style={{ padding: 24, opacity: imageFile ? 1 : 0.55, borderRadius: 16, border: "1px solid rgba(0,0,0,0.05)", boxShadow: "0 2px 8px rgba(0,0,0,0.02)", background: "#ffffff" }}>
+        {/* ---------- STEP 3: DESKRIPSI AI ---------- */}
+        <div className="card" style={{ padding: 20, background: "var(--cream-100)", border: "1px solid var(--brown-300)", borderRadius: 16, opacity: imageFile ? 1 : 0.55 }}>
           <fieldset disabled={false} style={{ border: "none", padding: 0, margin: 0 }}>
+            <div className="row between wrap gap-8" style={{ marginBottom: 12, alignItems: "center" }}>
+               <span className="row gap-4" style={{ alignItems: "center", fontWeight: 600, fontSize: "0.95rem", color: "var(--brown-800)" }}>
+                 Deskripsi Otomatis Qlapa AI
+               </span>
+               <button
+                 type="button"
+                 className="btn btn-secondary"
+                 style={{ padding: "6px 14px", borderRadius: 999, fontSize: "0.78rem" }}
+                 onClick={generateDesc}
+               >
+                 Sarankan Data dengan AI
+               </button>
+             </div>
+             <textarea
+               value={aiDesc}
+               onChange={(e) => setAiDesc(e.target.value)}
+               placeholder="Analisis foto akan mengisi deskripsi ini secara otomatis, lalu edit sesuai kebutuhan."
+               style={{ minHeight: 200, width: "100%", borderRadius: 10, border: "1px solid rgba(0,0,0,0.08)", padding: 12, fontSize: "0.88rem", outline: "none", resize: "vertical", fontFamily: "inherit" }}
+             />
+           </fieldset>
+        </div>
+        </div>
+
+        {/* --- KOLOM KANAN --- */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+        {/* ---------- STEP 2: DETAIL PRODUK ---------- */}
+        <div className="card" style={{ padding: 24, opacity: imageFile ? 1 : 0.55, borderRadius: 16, border: "1px solid rgba(0,0,0,0.05)", boxShadow: "0 2px 8px rgba(0,0,0,0.02)", background: "#ffffff", display: "flex", flexDirection: "column", flex: 1 }}>
+          <fieldset disabled={false} style={{ border: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", flex: 1 }}>
             <div className="row gap-8" style={{ marginBottom: 16, alignItems: "center" }}>
               <span className="badge" style={{ background: "var(--brown-500)", color: "#fff", border: "none", padding: "4px 10px", borderRadius: 6, fontWeight: 600, fontSize: "0.72rem" }}>Langkah 2</span>
               <strong style={{ fontSize: "0.95rem" }}>Detail Produk</strong>
@@ -435,40 +467,27 @@ export default function AddProduct() {
           </fieldset>
         </div>
 
-        {/* ---------- STEP 3: DESKRIPSI AI ---------- */}
-        <div className="card" style={{ padding: 20, background: "var(--cream-100)", border: "1px solid var(--brown-300)", borderRadius: 16, margin: "20px 0", opacity: imageFile ? 1 : 0.55 }}>
-          <fieldset disabled={false} style={{ border: "none", padding: 0, margin: 0 }}>
-            <div className="row between wrap gap-8" style={{ marginBottom: 12, alignItems: "center" }}>
-              <span className="row gap-4" style={{ alignItems: "center", fontWeight: 600, fontSize: "0.95rem", color: "var(--brown-800)" }}>
-                Deskripsi Otomatis Qlapa AI
-              </span>
-              <button
-                type="button"
-                className="btn btn-secondary"
-                style={{ padding: "6px 14px", borderRadius: 999, fontSize: "0.78rem" }}
-                onClick={generateDesc}
-              >
-                Sarankan Data dengan AI
-              </button>
-            </div>
-            <textarea
-              value={aiDesc}
-              onChange={(e) => setAiDesc(e.target.value)}
-              placeholder="Analisis foto akan mengisi deskripsi ini secara otomatis, lalu edit sesuai kebutuhan."
-              style={{ minHeight: 100, width: "100%", borderRadius: 10, border: "1px solid rgba(0,0,0,0.08)", padding: 12, fontSize: "0.88rem", outline: "none", resize: "vertical", fontFamily: "inherit" }}
-            />
-          </fieldset>
+        </div>
         </div>
 
-        <button
-          className="btn btn-primary btn-block"
-          style={{ padding: "14px 24px", borderRadius: 999, fontSize: "0.92rem", fontWeight: 600 }}
-          type="submit"
-          disabled={saving || !imageFile}
-        >
-          {saving ? "Mempublikasikan…" : "Publikasikan Produk"}
-        </button>
+        {/* --- TOMBOL PUBLIKASIKAN --- */}
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 32 }}>
+          <button
+            className="btn btn-primary"
+            style={{ padding: "14px 40px", borderRadius: 999, fontSize: "1rem", fontWeight: 600, minWidth: 300 }}
+            type="submit"
+            disabled={saving || !imageFile}
+          >
+            {saving ? "Mempublikasikan…" : "Publikasikan Produk"}
+          </button>
+        </div>
       </form>
+      <style>{`
+        @media (max-width: 800px) {
+          .add-product-grid { grid-template-columns: 1fr !important; gap: 20px !important; }
+          .section { padding: 24px 16px !important; }
+        }
+      `}</style>
     </div>
   );
 }

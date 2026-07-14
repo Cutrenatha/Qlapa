@@ -800,21 +800,19 @@ function ProductCard({ product: p }) {
             background: "var(--cream)", borderRadius: 10, padding: "10px 12px",
             marginBottom: 14, fontSize: "0.78rem",
           }}>
-            <SpecRow label="Berat" value={p.weight || "-"} />
-            <SpecRow label="Kadar Air" value={p.moisture || "-"} />
-            <SpecRow label="Asal" value={loc} />
+            <SpecRow label="Kategori" value={p.category || "-"} />
+            <SpecRow label="Kondisi" value={p.condition || "-"} />
+            <SpecRow label="Lokasi" value={loc} />
             <SpecRow label="Stok" value={`${p.stock} ${p.unit}`} />
           </div>
 
           {/* Footer */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: "0.78rem", color: "var(--ink-soft)" }}>
-              <MapPin size={12} />
-              <span>{loc}</span>
-            </div>
+          <div style={{ marginTop: "auto" }}>
             <span style={{
-              padding: "7px 16px", background: "var(--ink)", color: "#fff",
-              borderRadius: 999, fontSize: "0.78rem", fontWeight: 600,
+              display: "block", textAlign: "center",
+              padding: "9px 0", background: "var(--ink)", color: "#fff",
+              borderRadius: 10, fontSize: "0.82rem", fontWeight: 600,
+              letterSpacing: "0.01em"
             }}>
               Lihat Detail
             </span>

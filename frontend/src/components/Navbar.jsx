@@ -253,13 +253,7 @@ export default function Navbar() {
                       {user.is_seller ? "Dashboard Toko" : "Buka Toko"}
                     </Link>
                   )}
-                  <Link
-                    to={isSellerMode ? "/dashboard?tab=pesanan" : "/pesanan"}
-                    className="navbar-dropdown-item"
-                    onClick={closeAllMenus}
-                  >
-                    {isSellerMode ? "Pesanan Masuk" : "Riwayat Pesanan"}
-                  </Link>
+
                   <button
                     className="navbar-dropdown-item logout-btn"
                     onClick={() => {

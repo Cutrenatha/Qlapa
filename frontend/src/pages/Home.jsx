@@ -73,23 +73,23 @@ function CatalogCard({ item }) {
         </div>
 
         {/* Body */}
-        <div style={{ padding: "16px 18px 18px", display: "flex", flexDirection: "column", flexGrow: 1 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 8, fontSize: "0.75rem", color: "var(--ink-soft)" }}>
+        <div style={{ padding: "14px 16px 16px", display: "flex", flexDirection: "column", flexGrow: 1 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 6, fontSize: "0.73rem", color: "var(--ink-soft)" }}>
             <Clock size={11} />
             <span>Kondisi: {item.condition}</span>
           </div>
 
           <h3 style={{
-            fontFamily: "var(--font-display)", fontSize: "1.1rem",
+            fontFamily: "var(--font-display)", fontSize: "1rem",
             color: "var(--ink)", marginBottom: 4, lineHeight: 1.3,
-            fontWeight: 600
+            fontWeight: 600, flexGrow: 1
           }}>
             {item.name}
           </h3>
 
-          <div style={{ fontSize: "1.05rem", fontWeight: 700, color: "var(--ink)", marginBottom: 12 }}>
+          <div style={{ fontSize: "1rem", fontWeight: 700, color: "var(--ink)", marginBottom: 10 }}>
             Rp{Number(item.price).toLocaleString("id-ID")}
-            <span style={{ fontSize: "0.82rem", fontWeight: 500, color: "var(--ink-soft)", marginLeft: 4 }}>
+            <span style={{ fontSize: "0.80rem", fontWeight: 500, color: "var(--ink-soft)", marginLeft: 4 }}>
               / {item.unit}
             </span>
           </div>
@@ -99,21 +99,19 @@ function CatalogCard({ item }) {
             background: "var(--cream)", borderRadius: 10, padding: "10px 12px",
             marginBottom: 14, fontSize: "0.78rem",
           }}>
-            <SpecRow label="Jenis" value={item.type} />
+            <SpecRow label="Kategori" value={item.category} />
             <SpecRow label="Kondisi" value={item.condition} />
-            <SpecRow label="Asal" value={location} />
+            <SpecRow label="Lokasi" value={location} />
             <SpecRow label="Stok" value={`${item.stock} ${item.unit}`} />
           </div>
 
           {/* Footer */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "auto" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: "0.78rem", color: "var(--ink-soft)" }}>
-              <MapPin size={12} />
-              <span>{location}</span>
-            </div>
+          <div style={{ marginTop: "auto" }}>
             <span style={{
-              padding: "7px 16px", background: "var(--ink)", color: "#fff",
-              borderRadius: 999, fontSize: "0.78rem", fontWeight: 600,
+              display: "block", textAlign: "center",
+              padding: "9px 0", background: "var(--ink)", color: "#fff",
+              borderRadius: 10, fontSize: "0.82rem", fontWeight: 600,
+              letterSpacing: "0.01em"
             }}>
               Lihat Detail
             </span>
