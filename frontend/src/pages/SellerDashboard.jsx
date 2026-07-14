@@ -13,6 +13,12 @@ import "./SellerDashboard.css";
 
 /* ── Constants ── */
 const STATUS_META = {
+  menunggu_konfirmasi: {
+    label: "Menunggu Konfirmasi",
+    bg: "#FEF3C7",
+    fg: "#B45309",
+    Icon: Clock,
+  },
   belum_bayar: {
     label: "Belum Bayar",
     bg: "#FEF3C7",
@@ -50,6 +56,10 @@ const STATUS_META = {
     Icon: XCircle,
   },
 };
+
+// Safe lookup — never returns undefined
+const getStatusMeta = (status) =>
+  STATUS_META[status] ?? STATUS_META.belum_bayar;
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
 
@@ -446,7 +456,7 @@ function BerandaTab({ data }) {
           ) : (
             <div className="dashboard-recent-orders-list">
               {orders.slice(0, 3).map((o) => {
-                const meta = STATUS_META[o.status] || STATUS_META.menunggu_konfirmasi;
+                const meta = getStatusMeta(o.status);
                 const { Icon: StatusIcon } = meta;
                 return (
                   <div key={o.id} className="dashboard-order-row-small">
@@ -637,7 +647,7 @@ function PesananTab({ orders, onUpdateStatus }) {
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {filtered.map((o) => {
-            const meta = STATUS_META[o.status] || STATUS_META.belum_bayar;
+            const meta = getStatusMeta(o.status);
             const { Icon: StatusIcon } = meta;
             return (
               <div key={o.id} className="dashboard-order-card">
