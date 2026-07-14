@@ -328,7 +328,48 @@ def list_products():
     return jsonify([p.to_dict() for p in products])
 
 
+
+@app.get("/api/products/by-types")
+def get_products_by_types():
+    """Endpoint internal untuk Qlapa AI — ambil produk berdasarkan daftar jenis (type)."""
+    types_param = request.args.get("types", "")
+    limit = request.args.get("limit", 5, type=int)
+
+    if not types_param:
+        return jsonify([])
+
+    types_list = [t.strip() for t in types_param.split(",") if t.strip()]
+    if not types_list:
+        return jsonify([])
+
+    products = (
+        Product.query
+        .filter(Product.status == "active")
+        .filter(Product.type.in_(types_list))
+        .order_by(Product.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+
+    result = []
+    for p in products:
+        result.append({
+            "id": p.id,
+            "name": p.name,
+            "type": p.type,
+            "category": p.category,
+            "price": p.price,
+            "condition": p.condition,
+            "seller": {
+                "store_name": p.seller.store_name if p.seller else "",
+                "store_location": p.seller.store_location if p.seller else "",
+            },
+        })
+    return jsonify(result)
+
+
 @app.get("/api/products/<int:product_id>")
+
 def get_product(product_id):
     product = db.session.get(Product, product_id)
     if not product:
@@ -829,7 +870,7 @@ def send_chat(other_user_id):
 def ai_chat():
     """Widget 'Qlapa AI' — rekomendasi pemanfaatan limbah untuk pembeli."""
     data = request.get_json(force=True)
-    reply = chat_with_ai(data.get("message", ""), category=data.get("category"))
+    reply = chat_with_ai(data.get("message", ""))
     return jsonify({"reply": reply})
 
 
@@ -839,7 +880,7 @@ def ai_recommendation():
     product_name = request.args.get("product_name", "")
     if not category:
         return jsonify({"error": "Parameter category wajib diisi"}), 400
-    return jsonify({"recommendation": get_recommendation(category, question=product_name)})
+    return jsonify({"recommendation": get_recommendation(category, product_name)})
 
 
 # ---------------------------------------------------------------------------
