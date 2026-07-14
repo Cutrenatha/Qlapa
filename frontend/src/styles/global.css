@@ -35,7 +35,7 @@
   --shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.1);
 
   --font-display: "DM Serif Display", serif;
-  --font-body: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "SF Pro", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-body: "SF Pro Display", -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
 * { box-sizing: border-box; }
@@ -242,11 +242,28 @@ img { max-width: 100%; display: block; }
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow-lg);
   font-size: 0.9rem;
-  z-index: 999;
+  z-index: 9999;
   animation: rise 0.25s ease;
+  max-width: 360px;
 }
 .toast.error { background: var(--danger); }
-@keyframes rise { from { transform: translateY(12px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@keyframes rise {
+  from { transform: translateY(16px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+@media (max-width: 640px) {
+  .toast {
+    bottom: 80px;
+    left: 16px;
+    right: 16px;
+    max-width: none;
+    text-align: center;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    padding: 12px 16px;
+  }
+}
 
 @media (max-width: 900px) {
   .grid-3 { grid-template-columns: repeat(2, 1fr); }
@@ -254,8 +271,8 @@ img { max-width: 100%; display: block; }
   .grid-5 { grid-template-columns: repeat(3, 1fr); }
 }
 @media (max-width: 600px) {
-  .grid-3, .grid-4, .grid-5 { grid-template-columns: 1fr; }
-  .section { padding: 40px 0; }
+  .grid-3, .grid-4, .grid-5 { grid-template-columns: repeat(2, 1fr) !important; gap: 12px !important; }
+  .section { padding: 32px 0; }
 }
 
 .home-search-input {
@@ -752,7 +769,7 @@ img { max-width: 100%; display: block; }
   .fw-grid { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 480px) {
-  .fw-grid { grid-template-columns: 1fr; }
+  .fw-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 12px !important; }
 }
 
 /* ===== HOME PAGE (new full-width catalog) ===== */
@@ -766,6 +783,9 @@ img { max-width: 100%; display: block; }
   padding: 72px 24px 40px;
   text-align: center;
   background: var(--cream);
+}
+@media (max-width: 768px) {
+  .home-intro-text { padding: 32px 20px 24px !important; }
 }
 .home-intro-text h3 {
   font-family: var(--font-display);
@@ -789,9 +809,20 @@ img { max-width: 100%; display: block; }
   padding: 56px 0 64px;
   background: var(--cream);
 }
+@media (max-width: 768px) {
+  .home-catalog-section { padding: 28px 0 32px !important; }
+}
 .home-catalog-section--alt {
   background: #fff;
   border-top: 1px solid var(--line);
+}
+
+/* Stats section */
+.home-stats-section {
+  padding: 80px 0;
+}
+@media (max-width: 768px) {
+  .home-stats-section { padding: 36px 0 !important; }
 }
 .home-catalog-section > * {
   max-width: 1400px;
@@ -879,10 +910,31 @@ img { max-width: 100%; display: block; }
 }
 @media (max-width: 900px) {
   .home-catalog-grid { grid-template-columns: repeat(2, 1fr); }
-  .home-catalog-info-card { display: none; }
+  .home-catalog-info-card {
+    display: flex !important;
+    grid-column: 1 / -1 !important;
+    order: -1 !important;
+    padding: 20px !important;
+    gap: 12px !important;
+  }
+  .home-catalog-info-title {
+    font-size: 1.2rem !important;
+  }
+  .home-catalog-info-desc {
+    font-size: 0.8rem !important;
+    line-height: 1.5 !important;
+  }
+  .home-catalog-info-list li {
+    font-size: 0.78rem !important;
+  }
+  .home-catalog-info-cta {
+    padding: 8px 14px !important;
+    font-size: 0.75rem !important;
+    margin-top: 8px !important;
+  }
 }
 @media (max-width: 540px) {
-  .home-catalog-grid { grid-template-columns: 1fr; }
+  .home-catalog-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 12px !important; }
 }
 
 /* Product card */
@@ -1055,4 +1107,292 @@ img { max-width: 100%; display: block; }
   width: fit-content;
 }
 .home-catalog-info-cta:hover { background: rgba(255,255,255,0.18); }
+
+/* ============================================================
+   QLAPA MOBILE ADAPTATION STYLES (Breakpoint overrides)
+   ============================================================ */
+
+/* Hero Section mobile adapter */
+.hero-mobile-img-wrap {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .hero-section {
+    background-image: none !important;
+    background-color: var(--cream) !important;
+    padding: 28px 16px 40px 16px !important;
+    min-height: auto !important;
+    text-align: center;
+  }
+  .hero-content-wrapper {
+    max-width: 100% !important;
+    padding-left: 0 !important;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .hero-headline {
+    font-size: 1.75rem !important;
+    line-height: 1.25 !important;
+  }
+  .hero-description {
+    font-size: 0.85rem !important;
+    line-height: 1.5 !important;
+    margin-top: 8px !important;
+  }
+  .hero-ctas {
+    justify-content: center;
+    width: 100%;
+    gap: 10px;
+    margin-top: 16px !important;
+  }
+  .hero-btn-primary, .hero-btn-secondary {
+    padding: 10px 16px !important;
+    font-size: 0.82rem !important;
+  }
+  .hero-mobile-img-wrap {
+    display: block;
+    width: 100%;
+    max-width: 440px;
+    margin: 24px auto 0 auto;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: var(--shadow-md);
+    aspect-ratio: 16/10;
+  }
+  .hero-mobile-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+/* Global Mobile Typography Adaptations (screens < 768px) */
+@media (max-width: 768px) {
+  /* Generic headings */
+  h1 { font-size: 1.5rem !important; }
+  h2 { font-size: 1.3rem !important; }
+  h3 { font-size: 1.1rem !important; }
+  h4 { font-size: 0.95rem !important; }
+  
+  /* Body descriptions */
+  p, body, td, span:not(.badge), button, input, select, textarea {
+    font-size: 0.85rem !important;
+  }
+  
+  /* Sections & Intro text */
+  .home-intro-text {
+    padding: 40px 16px 24px !important;
+  }
+  .home-intro-text h3 {
+    font-size: 1rem !important;
+    line-height: 1.5 !important;
+  }
+  .home-intro-bar {
+    margin-top: 16px !important;
+  }
+  
+  .home-catalog-section {
+    padding: 32px 0 40px !important;
+  }
+  
+  /* Section headers */
+  .home-catalog-title {
+    font-size: 1.25rem !important;
+  }
+  .home-catalog-subtitle {
+    font-size: 0.78rem !important;
+    line-height: 1.4 !important;
+  }
+  .home-catalog-see-all {
+    font-size: 0.75rem !important;
+    padding: 6px 14px !important;
+  }
+  
+  .fw-title {
+    font-size: 1.25rem !important;
+  }
+  .fw-subtitle {
+    font-size: 0.78rem !important;
+  }
+  .fw-lihat-semua {
+    font-size: 0.75rem !important;
+  }
+  
+  /* Why Section titles */
+  .why-main-title {
+    font-size: 1.5rem !important;
+  }
+  .why-main-subtitle {
+    font-size: 0.8rem !important;
+    line-height: 1.45 !important;
+  }
+  
+  /* Profile & Dashboard Specific Typography */
+  .dashboard-title {
+    font-size: 1.4rem !important;
+  }
+  .dashboard-subtitle {
+    font-size: 0.78rem !important;
+  }
+  .profile-title {
+    font-size: 1.4rem !important;
+  }
+  .profile-subtitle {
+    font-size: 0.78rem !important;
+  }
+  .profile-panel-title {
+    font-size: 1rem !important;
+  }
+  .profile-panel-desc {
+    font-size: 0.76rem !important;
+  }
+  
+  /* Chat window title */
+  .chat-page-title {
+    font-size: 1.4rem !important;
+  }
+  .chat-page-subtitle {
+    font-size: 0.78rem !important;
+  }
+}
+
+/* Product Detail Grid stack */
+@media (max-width: 768px) {
+  .pd-grid {
+    grid-template-columns: 1fr !important;
+    gap: 20px !important;
+  }
+  .pd-grid > div {
+    width: 100% !important;
+  }
+}
+
+/* Checkout Page Grid stack */
+@media (max-width: 900px) {
+  .checkout-layout {
+    grid-template-columns: 1fr !important;
+    gap: 20px !important;
+  }
+}
+
+/* Product list catalogs (Bahan Baku / Produk Olahan) 2 cards per row on mobile */
+@media (max-width: 576px) {
+  /* Catalog product list card scaling */
+  .home-cat-card-img-wrap {
+    height: 110px !important;
+  }
+  .home-cat-card-body {
+    padding: 8px 10px 10px !important;
+    gap: 2px !important;
+  }
+  .home-cat-card-name {
+    font-size: 0.82rem !important;
+  }
+  .home-cat-card-price {
+    font-size: 0.78rem !important;
+  }
+  .home-cat-card-loc {
+    font-size: 0.65rem !important;
+  }
+  
+  /* Hide details for CatalogCard & ProductCard (Home & ProductList pages) */
+  .catalog-card .catalog-badge,
+  .catalog-card .catalog-condition-row,
+  .catalog-card .catalog-time-row,
+  .catalog-card .catalog-desc-row,
+  .catalog-card .catalog-specs-grid,
+  .catalog-card .catalog-footer-btn {
+    display: none !important;
+  }
+  
+  /* Hide details for ProductCard (Product catalog lists) */
+  .card .product-card-badge,
+  .card .product-card-footer {
+    display: none !important;
+  }
+  
+  /* ProductCard component scaling */
+  .card h4 {
+    font-size: 0.82rem !important;
+    margin-bottom: 4px !important;
+  }
+  .card div {
+    font-size: 0.78rem !important;
+  }
+  
+  /* Product Detail mobile text sizes */
+  .pd-grid h1 {
+    font-size: 1.35rem !important;
+    margin-bottom: 6px !important;
+  }
+  .pd-grid div span {
+    font-size: 1.15rem !important;
+  }
+  .pd-grid div span + span {
+    font-size: 0.78rem !important;
+  }
+  .pd-grid p {
+    font-size: 0.78rem !important;
+    line-height: 1.45 !important;
+  }
+}
+
+/* Form input fields full width */
+@media (max-width: 768px) {
+  input, select, textarea, .form-control {
+    width: 100% !important;
+    box-sizing: border-box;
+    font-size: 0.82rem !important;
+    padding: 10px 12px !important;
+  }
+}
+
+/* Footer stack */
+@media (max-width: 768px) {
+  .footer-inner, .footer-bottom {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 20px !important;
+    padding: 24px 16px !important;
+  }
+  .footer-col {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  .footer-col h4 {
+    font-size: 0.9rem !important;
+    margin-bottom: 12px !important;
+  }
+  .footer-col p, .footer-col li {
+    font-size: 0.78rem !important;
+  }
+}
+
+/* Floating AI Chatbot Mobile overrides */
+@media (max-width: 576px) {
+  .floating-ai-container {
+    bottom: 12px !important;
+    right: 12px !important;
+    z-index: 99999 !important;
+  }
+  .floating-ai-container button {
+    width: 58px !important;
+    height: 58px !important;
+  }
+  .floating-ai-popup {
+    width: calc(100vw - 24px) !important;
+    height: 420px !important;
+    max-height: calc(100vh - 100px) !important;
+    right: 0 !important;
+    border-radius: 18px !important;
+  }
+  .floating-ai-container .tooltip {
+    display: none !important; /* Hide hover tooltip on touch screens */
+  }
+}
+
+
+
 

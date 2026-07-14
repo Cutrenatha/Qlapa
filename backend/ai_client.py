@@ -84,10 +84,11 @@ def _fallback_log(feature, exc):
     print(f"[Qlapa AI] {feature}: AI service gagal, fallback lokal dipakai ({exc})")
 
 
-def ai_suggest_product_fields(name="", category="", condition="", quality="", notes=""):
+def ai_suggest_product_fields(name="", category="", type="", condition="", quality="", notes=""):
     payload = {
         "name": name,
         "category": category,
+        "type": type,
         "condition": condition,
         "quality": quality,
         "notes": notes,
@@ -99,16 +100,18 @@ def ai_suggest_product_fields(name="", category="", condition="", quality="", no
         return local_ai_suggest_product_fields(
             name=name,
             category=category,
+            type=type,
             condition=condition,
             quality=quality,
             notes=notes,
         )
 
 
-def generate_ai_description(name, category, condition="", notes=""):
+def generate_ai_description(name, category, type="", condition="", notes=""):
     payload = {
         "name": name,
         "category": category,
+        "type": type,
         "condition": condition,
         "notes": notes,
     }
@@ -120,6 +123,7 @@ def generate_ai_description(name, category, condition="", notes=""):
         return local_generate_ai_description(
             name=name,
             category=category,
+            type=type,
             condition=condition,
             notes=notes,
         )
@@ -133,16 +137,16 @@ def analyze_product_image(filepath):
         return local_analyze_product_image(filepath)
 
 
-def get_recommendation(question):
+def get_recommendation(category, question=""):
     try:
         data = _request_json(
             "/recommendation",
-            {"message": question},
+            {"category": category, "message": question},
         )
         return data.get("recommendation") or ""
     except Exception as exc:
         _fallback_log("recommendation", exc)
-        return local_get_recommendation(question)
+        return local_get_recommendation(category, question)
 
 
 def chat_with_ai(message):

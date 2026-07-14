@@ -43,9 +43,8 @@ export default function Navbar() {
     if (user && isSellerMode) {
       api.get("/seller/dashboard")
         .then((res) => {
-          setNewOrdersCount(res.data?.summary?.pesanan_baru || 0);
           const pending = (res.data?.orders || []).filter(
-            (o) => o.status === "menunggu_konfirmasi"
+            (o) => o.status === "dikemas" || o.status === "belum_bayar" || o.status === "menunggu_konfirmasi"
           );
           setPendingOrders(pending);
           setNewOrdersCount(pending.length);
@@ -53,6 +52,21 @@ export default function Navbar() {
         .catch(() => {});
     }
   }, [user, isSellerMode, path]);
+
+  useEffect(() => {
+    if (notifOpen && isSellerMode) {
+      document.body.classList.add("notif-active");
+    } else {
+      document.body.classList.remove("notif-active");
+    }
+    return () => {
+      document.body.classList.remove("notif-active");
+    };
+  }, [notifOpen, isSellerMode]);
+
+  useEffect(() => {
+    setNotifOpen(false);
+  }, [path]);
 
   const closeAllMenus = () => {
     setMenuOpen(false);
@@ -127,64 +141,16 @@ export default function Navbar() {
           </Link>
 
           {isSellerMode ? (
-            /* Bell notif dengan dropdown (Seller Mode) */
-            <div style={{ position: "relative" }}>
-              <button
-                className="navbar-icon-link bell-icon-link desktop-only"
-                title="Notifikasi Pesanan"
-                onClick={() => { setNotifOpen((o) => !o); setMenuOpen(false); }}
-                style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}
-              >
-                <Bell size={20} />
-                {newOrdersCount > 0 && <span className="navbar-cart-badge">{newOrdersCount}</span>}
-              </button>
-
-              {notifOpen && (
-                <div style={dropdownStyles.wrap} onMouseLeave={() => setNotifOpen(false)}>
-                  <div style={dropdownStyles.header}>
-                    <span style={dropdownStyles.title}>Pesanan Masuk</span>
-                    <button style={dropdownStyles.closeBtn} onClick={() => setNotifOpen(false)}>
-                      <X size={13} />
-                    </button>
-                  </div>
-
-                  {pendingOrders.length === 0 ? (
-                    <div style={dropdownStyles.empty}>
-                      <Bell size={22} color="#D1D5DB" />
-                      <p style={{ color: "#9CA3AF", fontSize: "0.8rem", margin: "8px 0 0", textAlign: "center" }}>
-                        Tidak ada pesanan baru.
-                      </p>
-                    </div>
-                  ) : (
-                    <div>
-                      {pendingOrders.slice(0, 4).map((o) => (
-                        <div key={o.id} style={dropdownStyles.item}>
-                          <div style={dropdownStyles.itemIcon}>
-                            <ShoppingBag size={14} color="#5C381D" />
-                          </div>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <p style={dropdownStyles.itemCode}>
-                              {`ORD-${new Date(o.created_at).toLocaleDateString("id-ID", { day:"2-digit", month:"2-digit", year:"2-digit" }).replace(/\//g,"")}-${String(o.id).padStart(3,"0")}`}
-                            </p>
-                            <p style={dropdownStyles.itemSub}>
-                              {o.buyer_name} · {(o.total||0).toLocaleString("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 })}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  <Link
-                    to="/dashboard?tab=pesanan"
-                    style={dropdownStyles.footer}
-                    onClick={() => { setNotifOpen(false); closeAllMenus(); }}
-                  >
-                    Lihat semua pesanan <ArrowRight size={12} />
-                  </Link>
-                </div>
-              )}
-            </div>
+            /* Bell notif (Seller Mode) */
+            <button
+              className="navbar-icon-link bell-icon-link desktop-only"
+              title="Notifikasi Pesanan"
+              onClick={() => { setNotifOpen((o) => !o); setMenuOpen(false); }}
+              style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}
+            >
+              <Bell size={20} />
+              {newOrdersCount > 0 && <span className="navbar-cart-badge">{newOrdersCount}</span>}
+            </button>
           ) : user ? (
             /* Icon Keranjang (Buyer Mode, hanya jika login) */
             <Link to="/keranjang" className="navbar-icon-link cart-icon-link" title="Keranjang" onClick={closeAllMenus}>
@@ -267,6 +233,19 @@ export default function Navbar() {
                 </div>
               )}
             </div>
+          )}
+
+          {/* Bell notif (Mobile Only — navigasi ke halaman pesanan) */}
+          {isSellerMode && (
+            <button
+              className="navbar-icon-link mobile-only"
+              title="Notifikasi Pesanan"
+              onClick={() => { navigate("/notifikasi"); setMobileMenuOpen(false); }}
+              style={{ background: "none", border: "none", cursor: "pointer", padding: 0, position: "relative" }}
+            >
+              <Bell size={22} />
+              {newOrdersCount > 0 && <span className="navbar-cart-badge">{newOrdersCount}</span>}
+            </button>
           )}
 
           {/* Hamburger Menu Button (Mobile Only) */}
@@ -388,6 +367,60 @@ export default function Navbar() {
           </nav>
         </div>
       )}
+
+      {/* Slide-in Notifications Overlay */}
+      {isSellerMode && (
+        <div
+          className={`dashboard-notif-overlay ${notifOpen ? "active" : ""}`}
+          onClick={() => setNotifOpen(false)}
+        />
+      )}
+
+      {/* Slide-in Notifications Panel */}
+      {isSellerMode && (
+        <div className={`dashboard-notif-panel ${notifOpen ? "open" : ""}`}>
+          <div className="dashboard-notif-header">
+            <h2>Notifikasi</h2>
+            <button type="button" className="dashboard-notif-close" onClick={() => setNotifOpen(false)}>
+              <X size={18} />
+            </button>
+          </div>
+          <div className="dashboard-notif-body">
+            {pendingOrders.length === 0 ? (
+              <div className="dashboard-notif-empty" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, padding: "80px 24px", color: "var(--ink-soft)", textAlign: "center" }}>
+                <Bell size={36} strokeWidth={1.3} color="rgba(45, 106, 79, 0.4)" />
+                <p style={{ margin: 0, fontSize: "0.9rem" }}>Tidak ada notifikasi baru.</p>
+              </div>
+            ) : (
+              pendingOrders.map((o) => (
+                <div
+                  key={o.id}
+                  className="dashboard-notif-item"
+                  onClick={() => {
+                    setNotifOpen(false);
+                    navigate("/dashboard?tab=pesanan");
+                  }}
+                >
+                  <div className="dashboard-notif-icon">
+                    <ShoppingBag size={16} />
+                  </div>
+                  <div className="dashboard-notif-content">
+                    <div className="dashboard-notif-title">
+                      {o.status === "dikemas" ? "Pesanan Baru Masuk" : "Menunggu Pembayaran"}
+                    </div>
+                    <p className="dashboard-notif-desc">
+                      {o.buyer_name} membeli produk senilai <strong>{(o.total || 0).toLocaleString("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 })}</strong>
+                    </p>
+                    <span className="dashboard-notif-time">
+                      {`ORD-${new Date(o.created_at).toLocaleDateString("id-ID", { day:"2-digit", month:"2-digit", year:"2-digit" }).replace(/\//g,"")}-${String(o.id).padStart(3,"0")}`} · {new Date(o.created_at).toLocaleDateString("id-ID", { day:"2-digit", month:"short", year:"numeric" })}
+                    </span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
     </header>
   );
 }
@@ -405,7 +438,6 @@ const dropdownStyles = {
     boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
     zIndex: 500,
     overflow: "hidden",
-    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
   },
   header: {
     display: "flex",

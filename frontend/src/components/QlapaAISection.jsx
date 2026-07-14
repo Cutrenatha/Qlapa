@@ -37,7 +37,7 @@ export default function QlapaAISection() {
 
   return (
     <section ref={sectionRef} style={styles.section}>
-      <div className="container" style={styles.container}>
+      <div className="container ai-section-container" style={styles.container}>
         {/* Left Column */}
         <div style={styles.leftCol}>
           <div style={styles.label}>Qlapa Ai</div>
@@ -119,9 +119,14 @@ export default function QlapaAISection() {
           .ai-section-container {
             flex-direction: column !important;
             gap: 40px !important;
+            padding: 0 24px !important;
           }
-          .ai-section-title {
-            font-size: 2.8rem !important;
+          .ai-section-container > div {
+            max-width: 100% !important;
+            width: 100% !important;
+          }
+          .ai-section-container h2 {
+            font-size: clamp(2rem, 8vw, 3rem) !important;
           }
         }
       `}</style>

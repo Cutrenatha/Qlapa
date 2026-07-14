@@ -18,7 +18,7 @@ export default function ProductCard({ product }) {
         ) : (
           <div style={styles.placeholder}>Kelapa</div>
         )}
-        <span className="badge" style={styles.categoryBadge}>
+        <span className="badge product-card-badge" style={styles.categoryBadge}>
           {product.category}
         </span>
       </div>
@@ -28,7 +28,7 @@ export default function ProductCard({ product }) {
           Rp{Number(product.price).toLocaleString("id-ID")}
           <span style={styles.unit}> / {product.unit}</span>
         </div>
-        <div className="row between" style={{ marginTop: 8, fontSize: "0.78rem", color: "var(--ink-soft)" }}>
+        <div className="row between product-card-footer" style={{ marginTop: 8, fontSize: "0.78rem", color: "var(--ink-soft)" }}>
           <span>Lokasi: {product.seller?.store_location || "-"}</span>
           {product.avg_rating && <span>Rating: {product.avg_rating}</span>}
         </div>

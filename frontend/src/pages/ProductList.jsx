@@ -708,7 +708,12 @@ export default function ProductList() {
           to { opacity: 1; transform: translateY(0); }
         }
         @media (max-width: 1024px) { .catalog-grid { grid-template-columns: repeat(2, 1fr) !important; } }
-        @media (max-width: 600px) { .catalog-grid { grid-template-columns: 1fr !important; } }
+        @media (max-width: 600px) {
+          .catalog-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 12px !important;
+          }
+        }
       `}</style>
     </div>
   );
@@ -760,7 +765,7 @@ function ProductCard({ product: p }) {
             background: "rgba(92, 61, 46, 0.88)",
             color: "#fff",
             backdropFilter: "blur(4px)",
-          }}>
+          }} className="catalog-badge">
             {p.type}
           </span>
         </div>
@@ -769,7 +774,7 @@ function ProductCard({ product: p }) {
         <div style={{ padding: "16px 18px 18px" }}>
           {/* Upload time */}
           {uploaded && (
-            <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 8, fontSize: "0.75rem", color: "var(--ink-soft)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 8, fontSize: "0.75rem", color: "var(--ink-soft)" }} className="catalog-time-row">
               <Clock size={11} />
               <span>Diunggah {timeAgo(uploaded)}</span>
             </div>
@@ -790,7 +795,7 @@ function ProductCard({ product: p }) {
           </div>
 
           <p style={{ fontSize: "0.8rem", color: "var(--ink-soft)", marginBottom: 12, lineHeight: 1.5,
-            display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+            display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }} className="catalog-desc-row">
             {p.description}
           </p>
 
@@ -799,7 +804,7 @@ function ProductCard({ product: p }) {
             display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 12px",
             background: "var(--cream)", borderRadius: 10, padding: "10px 12px",
             marginBottom: 14, fontSize: "0.78rem",
-          }}>
+          }} className="catalog-specs-grid">
             <SpecRow label="Kategori" value={p.category || "-"} />
             <SpecRow label="Kondisi" value={p.condition || "-"} />
             <SpecRow label="Lokasi" value={loc} />
@@ -807,7 +812,7 @@ function ProductCard({ product: p }) {
           </div>
 
           {/* Footer */}
-          <div style={{ marginTop: "auto" }}>
+          <div style={{ marginTop: "auto" }} className="catalog-footer-btn">
             <span style={{
               display: "block", textAlign: "center",
               padding: "9px 0", background: "var(--ink)", color: "#fff",

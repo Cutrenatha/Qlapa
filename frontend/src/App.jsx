@@ -17,6 +17,7 @@ import SellerDashboard from "./pages/SellerDashboard.jsx";
 import AddProduct from "./pages/AddProduct.jsx";
 import EditProduct from "./pages/EditProduct.jsx";
 import Orders from "./pages/Orders.jsx";
+import Notifications from "./pages/Notifications.jsx";
 import NotFound from "./pages/NotFound.jsx";
 import AdminLogin from "./pages/admin/AdminLogin.jsx";
 import AdminDashboard from "./pages/admin/AdminDashboard.jsx";
@@ -30,8 +31,9 @@ export default function App() {
   const isAdmin = location.pathname.startsWith("/admin");
   const isAuth = location.pathname === "/masuk" || location.pathname === "/daftar";
   const isOpenStore = location.pathname === "/toko/buka";
+  const isChat = location.pathname === "/chat";
   const hideShell = isAdmin || isAuth || isOpenStore;
-  const hideFooter = hideShell || isDashboard;
+  const hideFooter = hideShell || isDashboard || isChat;
 
   // Auto scroll to top on route change
   useEffect(() => {
@@ -75,13 +77,14 @@ export default function App() {
         <Route path="/dashboard/tambah-produk" element={<ProtectedRoute requireSeller><AddProduct /></ProtectedRoute>} />
         <Route path="/dashboard/produk/:id/edit" element={<ProtectedRoute requireSeller><EditProduct /></ProtectedRoute>} />
         <Route path="/pesanan" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
+        <Route path="/notifikasi" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
         <Route path="*" element={<NotFound />} />
       </Routes>
       {!hideFooter && <Footer />}
       </div>
-      {!hideShell && <FloatingAI />}
+      {(!hideShell && (location.pathname === "/" || location.pathname.startsWith("/produk"))) && <FloatingAI />}
     </>
   );
 }

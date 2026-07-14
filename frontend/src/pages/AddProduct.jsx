@@ -49,6 +49,7 @@ export default function AddProduct() {
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState("");
   const [analyzing, setAnalyzing] = useState(false);
+  const [progress, setProgress] = useState(0);
   const [analyzed, setAnalyzed] = useState(false);
   const [lowConfidence, setLowConfidence] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -113,6 +114,14 @@ export default function AddProduct() {
   const analyzeImageFile = async (file) => {
     if (!file) return;
     setAnalyzing(true);
+    setProgress(0);
+    const interval = setInterval(() => {
+      setProgress((prev) => {
+        if (prev >= 95) return 95;
+        return prev + Math.floor(Math.random() * 4) + 2;
+      });
+    }, 150);
+
     try {
       const fd = new FormData();
       fd.append("image", file);
@@ -150,10 +159,19 @@ export default function AddProduct() {
         quality: r.quality || f.quality,
         stock: f.stock,
         price: r.price_estimate != null ? String(r.price_estimate) : f.price,
+        unit: r.unit || f.unit,
       }));
 
       setAiDesc(r.ai_description || r.description || "");
-      setAnalyzed(true);
+      
+      clearInterval(interval);
+      setProgress(100);
+      
+      setTimeout(() => {
+        setAnalyzing(false);
+        setAnalyzed(true);
+      }, 300);
+
       setLowConfidence(!!r.low_confidence);
       const confText = r.confidence != null ? ` · Keyakinan AI: ${r.confidence}/5` : "";
       if (r.low_confidence) {
@@ -162,6 +180,8 @@ export default function AddProduct() {
         showToast(`Foto berhasil dianalisis${confText}! Cek & sesuaikan data di bawah.`);
       }
     } catch (err) {
+      clearInterval(interval);
+      setAnalyzing(false);
       showToast(
         err.response?.data?.detail || err.response?.data?.error || "Gagal menganalisis gambar",
         "error",
@@ -286,9 +306,9 @@ export default function AddProduct() {
                 <button type="button" className="btn btn-ghost btn-sm" onClick={removeImage} disabled={analyzing} style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   <X size={14} /> Ganti Foto
                 </button>
-                <button type="button" className="btn btn-primary btn-sm" onClick={analyzeImage} disabled={analyzing} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                 <button type="button" className="btn btn-primary btn-sm" onClick={analyzeImage} disabled={analyzing} style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   {analyzing
-                    ? "Menganalisis foto…"
+                    ? `Menganalisis foto... ${progress}%`
                     : analyzed
                     ? <><RefreshCcw size={14} /> Analisis Ulang</>
                     : <><Sparkles size={14} /> Analisis Foto dengan Qlapa AI</>}

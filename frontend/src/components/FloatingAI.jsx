@@ -57,10 +57,10 @@ export default function FloatingAI() {
   };
 
   return (
-    <div style={styles.container}>
+    <div style={styles.container} className="floating-ai-container">
       {/* Chat Popup */}
       {isOpen && (
-        <div style={styles.chatPopup}>
+        <div style={styles.chatPopup} className="floating-ai-popup">
           <div style={styles.chatHeader}>
             <div style={styles.headerLeft}>
               <div style={styles.headerAvatarWrap}>

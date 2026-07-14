@@ -84,12 +84,17 @@ export default function Orders() {
     : orders.filter((o) => o.status === filter);
 
   return (
-    <div className="section" style={{ minHeight: '80vh', padding: '40px 40px 80px 40px', width: '100%', boxSizing: 'border-box' }}>
-      <h1 style={{ fontSize: "2.2rem", fontFamily: "var(--font-display)", fontWeight: 700, marginBottom: 20, color: "var(--ink)" }}>
-        Riwayat Pesanan Belanja
-      </h1>
+    <div className="dashboard-shell" style={{ minHeight: '80vh' }}>
+      <div className="dashboard-topbar">
+        <div>
+          <h1 className="dashboard-title">Riwayat Pesanan Belanja</h1>
+          <p className="dashboard-subtitle">
+            Daftar seluruh transaksi pembelian limbah kelapa Anda di Qlapa.
+          </p>
+        </div>
+      </div>
 
-      <div className="dashboard-filter-row" style={{ marginBottom: 28, overflowX: "auto" }}>
+      <div className="dashboard-filter-row">
         {tabs.map((t) => {
           const count = t.key === "semua"
             ? orders.length

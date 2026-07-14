@@ -67,14 +67,14 @@ function CatalogCard({ item }) {
             background: "rgba(92, 61, 46, 0.88)",
             color: "#fff",
             backdropFilter: "blur(4px)",
-          }}>
+          }} className="catalog-badge">
             {item.type}
           </span>
         </div>
 
         {/* Body */}
         <div style={{ padding: "14px 16px 16px", display: "flex", flexDirection: "column", flexGrow: 1 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 6, fontSize: "0.73rem", color: "var(--ink-soft)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 6, fontSize: "0.73rem", color: "var(--ink-soft)" }} className="catalog-condition-row">
             <Clock size={11} />
             <span>Kondisi: {item.condition}</span>
           </div>
@@ -98,7 +98,7 @@ function CatalogCard({ item }) {
             display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 12px",
             background: "var(--cream)", borderRadius: 10, padding: "10px 12px",
             marginBottom: 14, fontSize: "0.78rem",
-          }}>
+          }} className="catalog-specs-grid">
             <SpecRow label="Kategori" value={item.category} />
             <SpecRow label="Kondisi" value={item.condition} />
             <SpecRow label="Lokasi" value={location} />
@@ -106,7 +106,7 @@ function CatalogCard({ item }) {
           </div>
 
           {/* Footer */}
-          <div style={{ marginTop: "auto" }}>
+          <div style={{ marginTop: "auto" }} className="catalog-footer-btn">
             <span style={{
               display: "block", textAlign: "center",
               padding: "9px 0", background: "var(--ink)", color: "#fff",
@@ -340,6 +340,9 @@ export default function Home() {
             position: relative;
             overflow: hidden;
           }
+          @media (max-width: 768px) {
+            .why-section-custom { padding: 36px 0 !important; }
+          }
           .why-section-custom .container { max-width: 1280px; padding: 0 40px !important; }
           .why-main-title { font-family: Georgia, serif; font-size: clamp(2.4rem, 5vw, 3.4rem); font-weight: 500; color: #1D1D1F; margin-bottom: 12px; letter-spacing: -0.01em; }
           .why-main-subtitle { color: #6E6E73; font-size: 0.95rem; max-width: 580px; margin: 0 auto; line-height: 1.6; }
@@ -363,14 +366,69 @@ export default function Home() {
           .why-center-img { max-width: 110%; height: auto; object-fit: contain; transition: transform 0.6s; filter: drop-shadow(0 8px 24px rgba(0,0,0,0.06)); }
           .why-layout-container:hover .why-center-img { transform: scale(1.05); }
           @media (max-width: 992px) {
-            .why-layout-container { grid-template-columns: 1fr; gap: 40px; }
-            .why-center-image-wrapper { order: -1; max-width: 280px; margin: 0 auto; }
+            .why-layout-container {
+              grid-template-columns: 1fr 1.2fr 1fr !important;
+              gap: 8px !important;
+              margin-top: 24px !important;
+            }
+            .why-column {
+              gap: 16px !important;
+            }
+            .why-center-image-wrapper {
+              max-width: 100% !important;
+              width: 100% !important;
+            }
+            .why-center-img {
+              max-width: 100% !important;
+              width: 100% !important;
+            }
+            .why-icon-circle {
+              width: 28px !important;
+              height: 28px !important;
+            }
+            .why-icon-circle svg {
+              width: 12px !important;
+              height: 12px !important;
+            }
+            .why-text-group {
+              max-width: 100% !important;
+              gap: 2px !important;
+            }
+            .why-feature-title {
+              font-size: 0.65rem !important;
+            }
+            .why-feature-desc {
+              font-size: 0.58rem !important;
+              line-height: 1.35 !important;
+            }
+          }
+          @media (max-width: 480px) {
+            .why-layout-container {
+              gap: 4px !important;
+            }
+            .why-column {
+              gap: 12px !important;
+            }
+            .why-icon-circle {
+              width: 22px !important;
+              height: 22px !important;
+            }
+            .why-icon-circle svg {
+              width: 10px !important;
+              height: 10px !important;
+            }
+            .why-feature-title {
+              font-size: 0.55rem !important;
+            }
+            .why-feature-desc {
+              font-size: 0.5rem !important;
+            }
           }
         `}</style>
       </section>
 
       {/* ── STATS ── */}
-      <section style={{ padding: "80px 0", background: "var(--cream)", borderTop: "1px solid var(--line)" }}>
+      <section className="home-stats-section" style={{ background: "var(--cream)", borderTop: "1px solid var(--line)" }}>
         <div className="container">
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 32, textAlign: "center" }} className="stats-grid">
             {[
@@ -387,8 +445,39 @@ export default function Home() {
           </div>
         </div>
         <style>{`
-          @media (max-width: 992px) { .stats-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 40px !important; } }
-          @media (max-width: 576px) { .stats-grid { grid-template-columns: 1fr !important; } }
+          @media (max-width: 992px) {
+            .stats-grid {
+              grid-template-columns: repeat(4, 1fr) !important;
+              gap: 12px !important;
+            }
+            .stats-grid div {
+              padding: 8px 4px !important;
+            }
+            .stats-grid div div:first-child {
+              font-size: 1.5rem !important;
+              margin-bottom: 4px !important;
+            }
+            .stats-grid div div:last-child {
+              font-size: 0.72rem !important;
+            }
+          }
+          @media (max-width: 576px) {
+            .stats-grid {
+              gap: 4px !important;
+            }
+            .stats-grid div {
+              padding: 4px 2px !important;
+            }
+            .stats-grid div div:first-child {
+              font-size: 1.15rem !important;
+              margin-bottom: 2px !important;
+              white-space: nowrap;
+            }
+            .stats-grid div div:last-child {
+              font-size: 0.58rem !important;
+              line-height: 1.25 !important;
+            }
+          }
         `}</style>
       </section>
 

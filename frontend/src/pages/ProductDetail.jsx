@@ -362,18 +362,18 @@ export default function ProductDetail() {
               <span className="badge badge-brown">{product.condition}</span>
             </div>
 
-            <h1 style={{ fontSize: "2.1rem", fontFamily: "var(--font-display)", fontWeight: 700, color: "var(--ink)", marginBottom: 8, lineHeight: 1.2 }}>
+            <h1 className="pd-title" style={{ fontSize: "2.1rem", fontFamily: "var(--font-display)", fontWeight: 700, color: "var(--ink)", marginBottom: 8, lineHeight: 1.2 }}>
               {product.name}
             </h1>
 
             <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 16 }}>
-              <span style={{ fontSize: "1.8rem", color: "var(--ink)", fontWeight: 700 }}>
+              <span className="pd-price-value" style={{ fontSize: "1.8rem", color: "var(--ink)", fontWeight: 700 }}>
                 Rp{Number(product.price).toLocaleString("id-ID")}
               </span>
-              <span style={{ fontSize: "0.95rem", color: "var(--ink-soft)", fontWeight: 500 }}>
+              <span className="pd-price-unit" style={{ fontSize: "0.95rem", color: "var(--ink-soft)", fontWeight: 500 }}>
                 / {product.unit}
               </span>
-              <span style={{ fontSize: "0.88rem", color: "var(--ink-soft)", marginLeft: "auto" }}>
+              <span className="pd-price-stock" style={{ fontSize: "0.88rem", color: "var(--ink-soft)", marginLeft: "auto" }}>
                 stok tersedia: <strong>{product.stock} {product.unit}</strong>
               </span>
             </div>
@@ -440,12 +440,12 @@ export default function ProductDetail() {
             </div>
 
             {/* Bottom Sticky Action Bar */}
-            <div style={{
+            <div className="pd-action-bar" style={{
               display: "flex", gap: 12, marginTop: 24, alignItems: "center"
             }}>
               {/* Add to Cart (Icon only) */}
               <button
-                className="btn btn-outline"
+                className="btn btn-outline pd-btn-cart"
                 style={{ padding: "14px 16px", borderRadius: "14px" }}
                 onClick={handleAddToCart}
                 disabled={product.stock <= 0}
@@ -455,17 +455,17 @@ export default function ProductDetail() {
 
               {/* Chat Penjual */}
               <button
-                className="btn btn-outline"
+                className="btn btn-outline pd-btn-chat"
                 style={{ padding: "14px 24px", borderRadius: "14px", display: "inline-flex", alignItems: "center", gap: 8 }}
                 onClick={handleChat}
               >
                 <MessageSquare size={16} />
-                <span>Chat Penjual</span>
+                <span className="pd-btn-chat-text">Chat Penjual</span>
               </button>
 
               {/* Beli Sekarang (Directly Checkout) */}
               <button
-                className="btn btn-primary"
+                className="btn btn-primary pd-btn-buy"
                 style={{ padding: "14px 28px", borderRadius: "14px", flex: 1, fontWeight: 700 }}
                 onClick={handleBuyNow}
                 disabled={product.stock <= 0}
@@ -525,7 +525,101 @@ export default function ProductDetail() {
           to { opacity: 1; transform: translateY(0); }
         }
         @media (max-width: 800px) {
-          .pd-grid { grid-template-columns: 1fr !important; gap: 32px !important; }
+          .pd-grid { grid-template-columns: 1fr !important; gap: 24px !important; }
+          .pd-title {
+            font-size: 1.35rem !important;
+            line-height: 1.3 !important;
+            margin-bottom: 8px !important;
+          }
+          .pd-price-value {
+            font-size: 1.25rem !important;
+          }
+          .pd-price-unit {
+            font-size: 0.8rem !important;
+          }
+          .pd-price-stock {
+            font-size: 0.76rem !important;
+          }
+          .pd-grid p {
+            font-size: 0.8rem !important;
+            line-height: 1.45 !important;
+          }
+          .pd-grid .badge {
+            font-size: 0.72rem !important;
+            padding: 4px 10px !important;
+          }
+        }
+        @media (max-width: 576px) {
+          .pd-title {
+            font-size: 1.15rem !important;
+            line-height: 1.25 !important;
+            margin-bottom: 6px !important;
+          }
+          .pd-price-value {
+            font-size: 1.15rem !important;
+          }
+          .pd-price-unit {
+            font-size: 0.75rem !important;
+          }
+          .pd-price-stock {
+            font-size: 0.72rem !important;
+          }
+          .pd-grid .badge {
+            font-size: 0.65rem !important;
+            padding: 3px 8px !important;
+          }
+          /* Sticky bottom action bar at the foot of screen */
+          .pd-action-bar {
+            position: fixed !important;
+            bottom: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            background: #ffffff !important;
+            border-top: 1px solid var(--line) !important;
+            padding: 10px 16px !important;
+            box-shadow: 0 -6px 20px rgba(0,0,0,0.06) !important;
+            z-index: 9999 !important;
+            margin-top: 0 !important;
+            gap: 10px !important;
+            box-sizing: border-box !important;
+          }
+          .pd-btn-cart {
+            padding: 10px !important;
+            width: 44px !important;
+            height: 44px !important;
+            border-radius: 12px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+          }
+          .pd-btn-chat {
+            padding: 10px !important;
+            width: 44px !important;
+            height: 44px !important;
+            border-radius: 12px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 0 !important;
+          }
+          .pd-btn-chat-text {
+            display: none !important;
+          }
+          .pd-btn-buy {
+            padding: 10px 14px !important;
+            height: 44px !important;
+            border-radius: 12px !important;
+            font-size: 0.82rem !important;
+            flex: 1 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            font-weight: 700 !important;
+          }
+          /* Hide footer on mobile inside product detail page */
+          footer, .footer, .site-footer {
+            display: none !important;
+          }
         }
       `}</style>
     </div>

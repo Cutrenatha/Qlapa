@@ -31,6 +31,10 @@ export default function HomeHero() {
             </button>
           </div>
         </div>
+        {/* Mobile Hero Image */}
+        <div className="hero-mobile-img-wrap">
+          <img src="/assets/klapa.png" alt="Potensi Kelapa" className="hero-mobile-image" />
+        </div>
       </div>
     </section>
   );

@@ -4,7 +4,7 @@ import {
   Store, Package, ShoppingBag, TrendingUp, Plus,
   Edit2, Trash2, Check, X, Truck, Clock, CheckCircle2,
   XCircle, MapPin, Calendar, ArrowRight, ChevronRight,
-  BarChart2, Star, Tag, Info, List, RotateCcw
+  BarChart2, Star, Tag, Info, List, RotateCcw, Bell
 } from "lucide-react";
 import api from "../api.js";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -344,40 +344,14 @@ function BerandaTab({ data }) {
       {/* 4 Stat cards */}
       <div className="dashboard-stats-grid">
         {[
-          {
-            Icon: ShoppingBag,
-            label: "Pesanan Baru",
-            value: summary.pesanan_baru,
-            sub: "butuh konfirmasi",
-            targetTab: "pesanan",
-          },
-          {
-            Icon: Package,
-            label: "Produk Terjual",
-            value: summary.produk_terjual,
-            sub: "total unit terjual",
-            targetTab: "produk",
-          },
-          {
-            Icon: TrendingUp,
-            label: "Pendapatan",
-            value: formatRp(summary.pendapatan),
-            sub: "estimasi bersih",
-            targetTab: "beranda",
-          },
-          {
-            Icon: BarChart2,
-            label: "Tingkat Respons",
-            value: `${summary.tingkat_respons}%`,
-            sub: "dari total pesanan masuk",
-            targetTab: "beranda",
-          },
-        ].map(({ Icon, label, value, sub, targetTab }) => (
-          <Link to={`/dashboard?tab=${targetTab}`} key={label} className="dashboard-stat-card">
+          { Icon: ShoppingBag, label: "Pesanan Baru",    value: summary.pesanan_baru,          sub: "butuh konfirmasi",         targetTab: "pesanan", accent: "#2D6A4F" },
+          { Icon: Package,     label: "Produk Terjual",  value: summary.produk_terjual,         sub: "total unit terjual",       targetTab: "produk",  accent: "#40916C" },
+          { Icon: TrendingUp,  label: "Pendapatan",      value: formatRp(summary.pendapatan),   sub: "estimasi bersih",          targetTab: "beranda", accent: "#52B788" },
+          { Icon: BarChart2,   label: "Tingkat Respons", value: `${summary.tingkat_respons}%`,  sub: "dari total pesanan masuk", targetTab: "beranda", accent: "#74C69D" },
+        ].map(({ Icon, label, value, sub, targetTab, accent }) => (
+          <Link to={`/dashboard?tab=${targetTab}`} key={label} className="dashboard-stat-card" style={{ "--stat-accent": accent }}>
             <div className="dashboard-stat-left">
-              <div className="dashboard-stat-icon-wrap">
-                <Icon size={18} strokeWidth={2} />
-              </div>
+              <div className="dashboard-stat-icon-wrap"><Icon size={18} strokeWidth={2} /></div>
               <h3 className="dashboard-stat-value">{value}</h3>
               <p className="dashboard-stat-label">{label}</p>
               <p className="dashboard-stat-sub">{sub}</p>

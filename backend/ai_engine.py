@@ -297,21 +297,19 @@ CONDITION_HINTS = {
 }
 
 PRICE_FALLBACK = {
-    ("Tempurung Kelapa", "Kering"): 2800, ("Tempurung Kelapa", "Basah"): 1100, ("Tempurung Kelapa", "Segar"): 1400,
-    ("Sabut Kelapa", "Kering"): 1900, ("Sabut Kelapa", "Basah"): 800, ("Sabut Kelapa", "Segar"): 1000,
-    ("Ampas Kelapa", "Kering"): 4500, ("Ampas Kelapa", "Basah"): 1000, ("Ampas Kelapa", "Segar"): 1300,
-    ("Daun Kelapa", "Kering"): 900, ("Daun Kelapa", "Basah"): 400, ("Daun Kelapa", "Segar"): 600,
-    ("Air Kelapa (limbah/sisa produksi)", "Kering"): 1000, ("Air Kelapa (limbah/sisa produksi)", "Basah"): 1400, ("Air Kelapa (limbah/sisa produksi)", "Segar"): 1800,
-    ("Briket Tempurung", "Kering"): 18000, ("Briket Tempurung", "Basah"): 10000, ("Briket Tempurung", "Segar"): 14000,
+    ("Tempurung", "Kering"): 2800, ("Tempurung", "Basah"): 1100, ("Tempurung", "Segar"): 1400,
+    ("Sabut", "Kering"): 1900, ("Sabut", "Basah"): 800, ("Sabut", "Segar"): 1000,
+    ("Ampas", "Kering"): 4500, ("Ampas", "Basah"): 1000, ("Ampas", "Segar"): 1300,
+    ("Daun", "Kering"): 900, ("Daun", "Basah"): 400, ("Daun", "Segar"): 600,
+    ("Air Kelapa", "Kering"): 1000, ("Air Kelapa", "Basah"): 1400, ("Air Kelapa", "Segar"): 1800,
+    ("Briket", "Kering"): 18000, ("Briket", "Basah"): 10000, ("Briket", "Segar"): 14000,
     ("Arang Aktif", "Kering"): 35000, ("Arang Aktif", "Basah"): 25000, ("Arang Aktif", "Segar"): 30000,
     ("Cocopeat", "Kering"): 12000, ("Cocopeat", "Basah"): 6000, ("Cocopeat", "Segar"): 8000,
     ("Cocofiber", "Kering"): 9500, ("Cocofiber", "Basah"): 5000, ("Cocofiber", "Segar"): 7000,
     ("Pot Sabut", "Kering"): 15000, ("Pot Sabut", "Basah"): 8000, ("Pot Sabut", "Segar"): 10000,
     ("Keset Sabut", "Kering"): 20000, ("Keset Sabut", "Basah"): 12000, ("Keset Sabut", "Segar"): 15000,
     ("Tali Sabut", "Kering"): 8000, ("Tali Sabut", "Basah"): 4000, ("Tali Sabut", "Segar"): 6000,
-    ("Kerajinan Tempurung", "Kering"): 45000, ("Kerajinan Tempurung", "Basah"): 25000, ("Kerajinan Tempurung", "Segar"): 35000,
-    ("Mangkuk Tempurung", "Kering"): 15000, ("Mangkuk Tempurung", "Basah"): 8000, ("Mangkuk Tempurung", "Segar"): 11000,
-    ("Sendok Tempurung", "Kering"): 5000, ("Sendok Tempurung", "Basah"): 2500, ("Sendok Tempurung", "Segar"): 3500,
+    ("Kerajinan", "Kering"): 45000, ("Kerajinan", "Basah"): 25000, ("Kerajinan", "Segar"): 35000,
     ("Pupuk Organik", "Kering"): 12000, ("Pupuk Organik", "Basah"): 6000, ("Pupuk Organik", "Segar"): 8000,
     ("Pakan Ternak", "Kering"): 7500, ("Pakan Ternak", "Basah"): 4000, ("Pakan Ternak", "Segar"): 5500,
 }
@@ -641,17 +639,24 @@ def get_recommendation(category: str, question: str = "") -> str:
     if GEMINI_CLIENT:
         prompt = (
             "Kamu adalah Qlapa AI, asisten virtual platform Qlapa. "
-            f"Berikan ide penggunaan kreatif, pengolahan, atau potensi jual (rekomendasi pemanfaatan) secara detail "
-            f"untuk produk kelapa jenis '{display_category}'. "
+            "Tugasmu adalah memberikan rekomendasi pemanfaatan limbah kelapa dengan format yang ringkas, mudah dipindai, dan nyaman dibaca.\n\n"
+            f"Jenis limbah/produk: {display_category}\n"
         )
         if question:
-            prompt += f"Pertanyaan atau produk spesifik dari pengguna: '{question}'. Berikan saran spesifik untuk pertanyaan/produk tersebut. "
+            prompt += f"Konteks/pertanyaan pengguna: {question}\n"
         prompt += (
-            "\nBerikan jawaban yang solutif, inspiratif, dan relevan dengan industri/bisnis. "
-            "Gunakan bahasa Indonesia yang profesional namun hangat. "
-            "Jawab langsung pada intinya, tidak terlalu panjang (1-3 paragraf saja). "
-            "PENTING: Jangan gunakan format markdown seperti bintang (**) untuk teks tebal. "
-            "Tulis jawaban mengalir seperti teks biasa agar enak dibaca."
+            "\nHarus dijawab dengan format persis seperti contoh berikut (tidak boleh ada format lain):\n\n"
+            "[Nama Limbah/Produk]\n"
+            "[1-2 kalimat ringkas yang menjelaskan potensi limbah/produk secara umum]\n\n"
+            "Dapat diolah menjadi:\n"
+            "• [Nama produk olahan 1]\n"
+            "• [Nama produk olahan 2]\n"
+            "• [Nama produk olahan 3]\n"
+            "• ... (sebutkan semua yang relevan)\n\n"
+            "Aturan PENTING:\n"
+            "1. JANGAN gunakan format markdown tebal seperti bintang (**) untuk teks.\n"
+            "2. JANGAN tambahkan penjelasan panjang lebar di setiap poin-poin hasil olahan.\n"
+            "3. Prioritaskan ringkas, padat, dan nyaman dibaca langsung di UI."
         )
         try:
             response = _call_gemini(prompt, temperature=0.7)
@@ -669,12 +674,12 @@ def get_recommendation(category: str, question: str = "") -> str:
             f"Coba tanyakan tentang kategori seperti {known_categories}."
         )
 
-    produk_list = "\n".join([f"  • {p}" for p in info["produk"]])
+    produk_list = "\n".join([f"• {p.title()}" for p in info["produk"]])
     reply = (
-        f"Produk kelapa kategori {display_category.lower()} bisa dimanfaatkan menjadi beberapa "
-        f"produk hilir berikut:\n{produk_list}\n\n"
-        f"Bahan ini paling relevan untuk sektor {', '.join(info['sektor'])}. "
-        f"Karakteristik utamanya: {info['karakteristik']}."
+        f"{display_category}\n"
+        f"{display_category} memiliki nilai ekonomi tinggi dan dapat diolah menjadi berbagai produk ramah lingkungan maupun bernilai jual.\n\n"
+        f"Dapat diolah menjadi:\n"
+        f"{produk_list}"
     )
     return reply
 
@@ -873,6 +878,12 @@ def _analyze_product_image_fallback(filepath: str) -> dict:
         notes="",
     )
 
+    unit = "kg"
+    if category == "Air Kelapa":
+        unit = "liter"
+    elif category in ["Pot Sabut", "Keset Sabut", "Kerajinan", "Tali Sabut"]:
+        unit = "pcs"
+
     return {
         "name": suggestions["name"],
         "category": suggestions["category"],
@@ -885,6 +896,7 @@ def _analyze_product_image_fallback(filepath: str) -> dict:
         "ai_description": suggestions["description"],
         "confidence": 1,
         "low_confidence": True,
+        "unit": unit,
     }
 
 
@@ -940,6 +952,12 @@ def analyze_product_image(filepath: str) -> dict:
         confidence = 5
     low_confidence = confidence <= 2
 
+    unit = "kg"
+    if resolved_type == "Air Kelapa":
+        unit = "liter"
+    elif resolved_type in ["Pot Sabut", "Keset Sabut", "Kerajinan", "Tali Sabut"]:
+        unit = "pcs"
+
     return {
         "name": name,
         "category": category,
@@ -952,6 +970,7 @@ def analyze_product_image(filepath: str) -> dict:
         "ai_description": description,
         "confidence": confidence,
         "low_confidence": low_confidence,
+        "unit": unit,
     }
 
 
@@ -1124,14 +1143,12 @@ def chat_with_ai(message: str) -> str:
         products = fetch_products_by_types(search_types)
         
     system_prompt = (
-        "Kamu adalah Qlapa AI, asisten virtual ramah dari platform Qlapa "
-        "(marketplace jual-beli limbah kelapa). Tugasmu membantu pembeli (B2B/UMKM/Industri) "
-        "menemukan ide pemanfaatan bahan baku dan produk olahan kelapa. "
-        "Berikan jawaban yang solutif, inspiratif, dan relevan dengan industri/bisnis. "
-        "Gunakan bahasa Indonesia yang profesional namun hangat. "
-        "Jawab langsung pada intinya, tidak terlalu panjang (1-3 paragraf saja). "
-        "PENTING: Jangan gunakan format markdown seperti bintang (**) untuk teks tebal. "
-        "Tulis jawaban mengalir seperti teks biasa agar enak dibaca."
+        "Kamu adalah Qlapa AI, asisten virtual ramah dari platform Qlapa. "
+        "Tugasmu membantu pengguna menemukan ide pemanfaatan limbah/produk kelapa. "
+        "PENTING:\n"
+        "1. Jawab dengan SANGAT SINGKAT (maksimal 2-3 kalimat saja) dan langsung ke intinya.\n"
+        "2. JANGAN gunakan format markdown tebal seperti bintang (**) untuk teks.\n"
+        "3. Beritahu pengguna dengan santun bahwa mereka bisa melihat produk rekomendasi yang cocok dari katalog di bawah."
     )
     
     context = ""
@@ -1139,7 +1156,7 @@ def chat_with_ai(message: str) -> str:
         context += "Berikut adalah produk-produk nyata dari database Qlapa yang cocok dengan kebutuhan pengguna:\n"
         for p in products:
             context += f"- {p['name']} (Rp{p['price']}), Jenis: {p['type']}, Lokasi: {p['seller'].get('store_location', '')}\n"
-        context += "\nPENTING: Jangan tulis ulang daftar produk ini secara manual dalam format teks (bullet points/list). Cukup katakan secara umum bahwa Anda merekomendasikan produk ini dan pengguna dapat melihat produk-produk tersebut langsung di bawah pesan ini.\n"
+        context += "\nPENTING: Informasikan saja bahwa produk di atas tersedia untuk dilihat langsung di bawah pesan ini. Jangan sebutkan harganya secara detail dalam teks.\n"
     elif types and intent in ["product_recommendation", "product_search"]:
         context += f"Pengguna mencari jenis produk: {', '.join(types)}. Sayangnya saat ini belum ada stok di database untuk jenis tersebut, beritahu pengguna dengan sopan.\n"
 

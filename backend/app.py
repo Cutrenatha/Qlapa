@@ -328,7 +328,44 @@ def list_products():
     return jsonify([p.to_dict() for p in products])
 
 
+
+@app.get("/api/products/by-types")
+def get_products_by_types():
+    """Endpoint internal untuk Qlapa AI — ambil produk berdasarkan daftar jenis (type)."""
+    types_param = request.args.get("types", "")
+    limit = request.args.get("limit", 5, type=int)
+    if not types_param:
+        return jsonify([])
+    types_list = [t.strip() for t in types_param.split(",") if t.strip()]
+    if not types_list:
+        return jsonify([])
+    products = (
+        Product.query
+        .filter(Product.status == "active")
+        .filter(Product.type.in_(types_list))
+        .order_by(Product.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+    result = []
+    for p in products:
+        result.append({
+            "id": p.id,
+            "name": p.name,
+            "type": p.type,
+            "category": p.category,
+            "price": p.price,
+            "condition": p.condition,
+            "seller": {
+                "store_name": p.seller.store_name if p.seller else "",
+                "store_location": p.seller.store_location if p.seller else "",
+            },
+        })
+    return jsonify(result)
+
+
 @app.get("/api/products/<int:product_id>")
+
 def get_product(product_id):
     product = db.session.get(Product, product_id)
     if not product:
@@ -353,6 +390,7 @@ def create_product():
     ai_desc = generate_ai_description(
         name=data["name"],
         category=data["category"],
+        type=data.get("type", ""),
         condition=data.get("condition", ""),
         notes=data.get("manual_note", ""),
     )
@@ -361,6 +399,7 @@ def create_product():
         seller_id=user.id,
         name=data["name"],
         category=data["category"],
+        type=data.get("type", "Lainnya"),
         price=float(data["price"]),
         stock=float(data["stock"]),
         unit=data.get("unit", "kg"),
@@ -383,6 +422,7 @@ def preview_ai_description():
     suggestion = ai_suggest_product_fields(
         name=data.get("name", ""),
         category=data.get("category", ""),
+        type=data.get("type", ""),
         condition=data.get("condition", ""),
         quality=data.get("quality", ""),
         notes=data.get("manual_note", ""),
@@ -421,12 +461,14 @@ def analyze_product_image_route():
         result = analyze_product_image(tmp_path)
         return jsonify({
             "name": result["name"],
+            "type": result.get("type", ""),
             "category": result.get("category"),
             "condition": result.get("condition"),
             "quality": result.get("quality"),
             "notes": result.get("notes", ""),
             "stock_estimate": result.get("stock_estimate"),
             "price_estimate": result.get("price_estimate"),
+            "unit": result.get("unit", "kg"),
             "ai_description": result["ai_description"],
             "confidence": result.get("confidence"),
             "low_confidence": result.get("low_confidence", False),
@@ -829,8 +871,50 @@ def send_chat(other_user_id):
 def ai_chat():
     """Widget 'Qlapa AI' — rekomendasi pemanfaatan limbah untuk pembeli."""
     data = request.get_json(force=True)
-    reply = chat_with_ai(data.get("message", ""), category=data.get("category"))
-    return jsonify({"reply": reply})
+    message = data.get("message", "")
+    reply = chat_with_ai(message)
+    
+    # Extract matching products for frontend minimized catalog cards
+    from ai_engine import detect_intent, extract_product_types, BAHAN_BAKU_LIST, PRODUK_OLAHAN_LIST, DOWNSTREAM_MAP
+    intent = detect_intent(message)
+    products_list = []
+    
+    if intent in ["product_recommendation", "product_search", "product_utilization"]:
+        types = extract_product_types(message)
+        search_types = list(types)
+        all_types = BAHAN_BAKU_LIST + PRODUK_OLAHAN_LIST
+        for t in types:
+            if t in BAHAN_BAKU_LIST:
+                downstream = DOWNSTREAM_MAP.get(t, {}).get("produk", [])
+                for ds in downstream:
+                    for canonical in all_types:
+                        if ds.lower() == canonical.lower() and canonical not in search_types:
+                            search_types.append(canonical)
+        
+        # Query matching products directly from DB
+        products = (
+            Product.query
+            .filter(Product.status == "active")
+            .filter(Product.type.in_(search_types))
+            .order_by(Product.created_at.desc())
+            .limit(3)
+            .all()
+        )
+        for p in products:
+            products_list.append({
+                "id": p.id,
+                "name": p.name,
+                "type": p.type,
+                "category": p.category,
+                "price": p.price,
+                "image_url": p.image_url,
+                "seller": {
+                    "store_name": p.seller.store_name if p.seller else "",
+                    "store_location": p.seller.store_location if p.seller else "",
+                }
+            })
+            
+    return jsonify({"reply": reply, "products": products_list})
 
 
 @app.get("/api/ai/recommendation")
@@ -839,7 +923,7 @@ def ai_recommendation():
     product_name = request.args.get("product_name", "")
     if not category:
         return jsonify({"error": "Parameter category wajib diisi"}), 400
-    return jsonify({"recommendation": get_recommendation(category, question=product_name)})
+    return jsonify({"recommendation": get_recommendation(category, product_name)})
 
 
 # ---------------------------------------------------------------------------
