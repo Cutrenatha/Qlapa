@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import api from "../api.js";
 import { useAuth } from "../context/AuthContext.jsx";
+import { Send, MessageSquare, User } from "lucide-react";
+import "./Chat.css";
 
 export default function Chat() {
   const { user } = useAuth();
@@ -43,73 +45,97 @@ export default function Chat() {
   };
 
   return (
-    <div className="section container">
-      <h1 style={{ fontSize: "1.8rem", marginBottom: 24 }}>Obrolan</h1>
-      <div className="card chat-grid" style={{ display: "grid", gridTemplateColumns: "260px 1fr", height: 520, overflow: "hidden" }}>
-        <div style={{ borderRight: "1px solid var(--line)", overflowY: "auto" }}>
-          {threads.length === 0 && !activeId && (
-            <div style={{ padding: 20, fontSize: "0.85rem", color: "var(--ink-soft)" }}>
-              Belum ada percakapan. Chat penjual dari halaman produk untuk memulai.
-            </div>
-          )}
-          {threads.map((t) => (
-            <div
-              key={t.user_id}
-              onClick={() => { setActiveId(t.user_id); setActiveName(t.name); }}
-              style={{
-                padding: "14px 16px", cursor: "pointer",
-                background: activeId === t.user_id ? "var(--cream-2)" : "transparent",
-                borderBottom: "1px solid var(--line)",
-              }}
-            >
-              <div style={{ fontWeight: 700, fontSize: "0.9rem" }}>{t.name}</div>
-              <div style={{ fontSize: "0.78rem", color: "var(--ink-soft)", marginTop: 2 }}>
-                {t.last_message?.slice(0, 40)}
-              </div>
-            </div>
-          ))}
-        </div>
+    <div className="chat-page">
+      {/* Header */}
+      <div className="chat-page-header">
+        <h1 className="chat-page-title">Obrolan</h1>
+        <p className="chat-page-subtitle">Percakapan dengan penjual atau pembeli di Qlapa.</p>
+      </div>
 
-        <div style={{ display: "flex", flexDirection: "column" }}>
+      {/* Main layout */}
+      <div className="chat-shell">
+        {/* Sidebar: thread list */}
+        <aside className="chat-sidebar">
+          <div className="chat-sidebar-header">
+            <span>Percakapan</span>
+          </div>
+
+          <div className="chat-thread-list">
+            {threads.length === 0 && !activeId ? (
+              <div className="chat-empty-threads">
+                <MessageSquare size={28} strokeWidth={1.5} />
+                <p>Belum ada percakapan.<br />Chat penjual dari halaman produk untuk memulai.</p>
+              </div>
+            ) : (
+              threads.map((t) => (
+                <div
+                  key={t.user_id}
+                  className={`chat-thread-item ${activeId === t.user_id ? "active" : ""}`}
+                  onClick={() => { setActiveId(t.user_id); setActiveName(t.name); }}
+                >
+                  <div className="chat-thread-avatar">
+                    <User size={18} />
+                  </div>
+                  <div className="chat-thread-info">
+                    <div className="chat-thread-name">{t.name}</div>
+                    <div className="chat-thread-preview">{t.last_message?.slice(0, 45) || "—"}</div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </aside>
+
+        {/* Main chat area */}
+        <div className="chat-main">
           {activeId ? (
             <>
-              <div style={{ padding: "14px 18px", borderBottom: "1px solid var(--line)", fontWeight: 700 }}>
-                {activeName || "Percakapan"}
+              {/* Chat header */}
+              <div className="chat-main-header">
+                <div className="chat-main-avatar"><User size={20} /></div>
+                <div className="chat-main-name">{activeName || "Percakapan"}</div>
               </div>
-              <div style={{ flex: 1, overflowY: "auto", padding: 18, display: "flex", flexDirection: "column", gap: 10, background: "var(--cream-2)" }}>
+
+              {/* Messages */}
+              <div className="chat-messages">
+                {messages.length === 0 && (
+                  <div className="chat-messages-empty">Belum ada pesan. Mulai percakapan sekarang!</div>
+                )}
                 {messages.map((m) => (
                   <div
                     key={m.id}
-                    style={{
-                      alignSelf: m.sender_id === user.id ? "flex-end" : "flex-start",
-                      background: m.sender_id === user.id ? "var(--green-700)" : "#fff",
-                      color: m.sender_id === user.id ? "#fff" : "var(--ink)",
-                      padding: "10px 14px", borderRadius: 14, maxWidth: "70%",
-                      border: m.sender_id === user.id ? "none" : "1px solid var(--line)",
-                    }}
+                    className={`chat-bubble-wrap ${m.sender_id === user.id ? "sent" : "received"}`}
                   >
-                    {m.message}
+                    <div className={`chat-bubble ${m.sender_id === user.id ? "bubble-sent" : "bubble-received"}`}>
+                      {m.message}
+                    </div>
                   </div>
                 ))}
                 <div ref={endRef} />
               </div>
-              <div style={{ display: "flex", gap: 8, padding: 14, borderTop: "1px solid var(--line)" }}>
+
+              {/* Input */}
+              <div className="chat-input-area">
                 <input
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && send()}
                   placeholder="Tulis pesan…"
-                  style={{ flex: 1, padding: "10px 14px", borderRadius: 999, border: "1.5px solid var(--line)", outline: "none" }}
+                  className="chat-input"
                 />
-                <button className="btn btn-primary btn-sm" onClick={send}>Kirim</button>
+                <button className="chat-send-btn" onClick={send} disabled={!input.trim()}>
+                  <Send size={18} />
+                </button>
               </div>
             </>
           ) : (
-            <div className="empty-state" style={{ margin: "auto" }}>Pilih percakapan di sebelah kiri.</div>
+            <div className="chat-main-empty">
+              <MessageSquare size={40} strokeWidth={1.5} />
+              <p>Pilih percakapan di sebelah kiri</p>
+            </div>
           )}
         </div>
       </div>
-      <style>{`@media (max-width: 700px) { .chat-grid { grid-template-columns: 1fr !important; height: auto !important; } }`}</style>
     </div>
   );
 }

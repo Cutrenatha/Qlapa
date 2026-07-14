@@ -42,15 +42,15 @@ export default function AIChatWidget({
     setLoading(true);
     try {
       if (user) {
-        const res = await api.post("/ai/chat", { message: question, category });
-        setMessages((m) => [...m, { from: "ai", text: res.data.reply }]);
+        const res = await api.post("/ai/chat", { message: question });
+        setMessages((m) => [...m, { from: "ai", text: res.data.reply, products: res.data.products || [] }]);
       } else {
         const res = await api.get("/ai/recommendation", {
           params: { category: category || "Ampas" },
         });
         setMessages((m) => [
           ...m,
-          { from: "ai", text: res.data.recommendation },
+          { from: "ai", text: res.data.recommendation, products: res.data.products || [] },
         ]);
       }
     } catch (e) {
@@ -82,14 +82,55 @@ export default function AIChatWidget({
           </div>
           <div style={styles.body}>
             {messages.map((m, i) => (
-              <div
-                key={i}
-                style={{
-                  ...styles.bubble,
-                  ...(m.from === "user" ? styles.bubbleUser : styles.bubbleAi),
-                }}
-              >
-                {m.text}
+              <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: m.from === "user" ? "flex-end" : "flex-start", width: "100%", marginBottom: 12 }}>
+                <div
+                  style={{
+                    ...styles.bubble,
+                    ...(m.from === "user" ? styles.bubbleUser : styles.bubbleAi),
+                    maxWidth: "85%",
+                    marginBottom: 0
+                  }}
+                >
+                  {m.text}
+                </div>
+                {m.products && m.products.length > 0 && (
+                  <div style={{
+                    display: "flex", gap: 8, overflowX: "auto", padding: "6px 0 2px",
+                    width: "100%", maxWidth: "85%", scrollbarWidth: "none", alignSelf: "flex-start"
+                  }}>
+                    {m.products.map((prod) => (
+                      <a
+                        key={prod.id}
+                        href={`/produk/${prod.id}`}
+                        style={{
+                          flex: "0 0 110px", background: "#fff", border: "1px solid #e5e5ea",
+                          borderRadius: 12, overflow: "hidden", textDecoration: "none",
+                          color: "inherit", display: "block"
+                        }}
+                      >
+                        <div style={{ width: "100%", height: 65, background: "#f5f5f7" }}>
+                          <img
+                            src={prod.image_url || "/assets/coconut.png"}
+                            alt={prod.name}
+                            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                            onError={(e) => { e.target.src = "/assets/coconut.png"; }}
+                          />
+                        </div>
+                        <div style={{ padding: 6 }}>
+                          <div style={{ fontSize: "0.7rem", fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                            {prod.name}
+                          </div>
+                          <div style={{ fontSize: "0.65rem", color: "var(--ink-soft)", marginTop: 2 }}>
+                            Rp{prod.price.toLocaleString("id-ID")}
+                          </div>
+                          <div style={{ fontSize: "0.6rem", color: "#8e8e93", marginTop: 4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                            {prod.seller?.store_location || "Indonesia"}
+                          </div>
+                        </div>
+                      </a>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
             {loading && (

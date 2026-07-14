@@ -1,7 +1,7 @@
-﻿import React from "react";
+import React, { useEffect } from "react";
 import { Routes, Route, useLocation } from "react-router-dom";
 import Navbar from "./components/Navbar.jsx";
-import BottomNav from "./components/BottomNav.jsx";
+import Footer from "./components/Footer.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import Home from "./pages/Home.jsx";
 import ProductList from "./pages/ProductList.jsx";
@@ -22,15 +22,44 @@ import AdminLogin from "./pages/admin/AdminLogin.jsx";
 import AdminDashboard from "./pages/admin/AdminDashboard.jsx";
 import AdminRoute from "./components/AdminRoute.jsx";
 
+import FloatingAI from "./components/FloatingAI.jsx";
+
 export default function App() {
   const location = useLocation();
   const isDashboard = location.pathname.startsWith("/dashboard");
   const isAdmin = location.pathname.startsWith("/admin");
+  const isAuth = location.pathname === "/masuk" || location.pathname === "/daftar";
+  const isOpenStore = location.pathname === "/toko/buka";
+  const hideShell = isAdmin || isAuth || isOpenStore;
+  const hideFooter = hideShell || isDashboard;
+
+  // Auto scroll to top on route change
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [location.pathname]);
 
   return (
     <>
-      {!isDashboard && !isAdmin && <Navbar />}
-      <div className={isDashboard || isAdmin ? "" : "app-content"}>
+      <svg width="0" height="0" aria-hidden="true" focusable="false" style={{ position: "absolute" }}>
+        <filter id="liquid-glass-distortion">
+          <feTurbulence
+            type="turbulence"
+            baseFrequency="0.028"
+            numOctaves="2"
+            seed="7"
+            result="noise"
+          />
+          <feDisplacementMap
+            in="SourceGraphic"
+            in2="noise"
+            scale="13"
+            xChannelSelector="G"
+            yChannelSelector="B"
+          />
+        </filter>
+      </svg>
+      {!hideShell && <Navbar />}
+      <div className={hideShell ? "" : "app-content"} style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/produk" element={<ProductList />} />
@@ -50,8 +79,9 @@ export default function App() {
         <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
         <Route path="*" element={<NotFound />} />
       </Routes>
+      {!hideFooter && <Footer />}
       </div>
-      {!isAdmin && <BottomNav />}
+      {!hideShell && <FloatingAI />}
     </>
   );
 }

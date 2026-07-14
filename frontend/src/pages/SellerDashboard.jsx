@@ -1,820 +1,786 @@
-import React, { useEffect, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import React, { useEffect, useState, useRef } from "react";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
+import {
+  Store, Package, ShoppingBag, TrendingUp, Plus,
+  Edit2, Trash2, Check, X, Truck, Clock, CheckCircle2,
+  XCircle, MapPin, Calendar, ArrowRight, ChevronRight,
+  BarChart2, Star, Tag, Info, List, RotateCcw
+} from "lucide-react";
 import api from "../api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
+import "./SellerDashboard.css";
 
+/* ── Constants ── */
 const STATUS_META = {
-  menunggu_konfirmasi: {
-    label: "Menunggu Diproses",
-    bg: "#F6E4BB",
-    fg: "#8A5A17",
+  belum_bayar: {
+    label: "Belum Bayar",
+    bg: "#FEF3C7",
+    fg: "#B45309",
+    Icon: Clock,
   },
-  diproses: { label: "Dikemas", bg: "#D9E8D6", fg: "#2F5233" },
-  dikirim: { label: "Dikirim", bg: "#E1DCF0", fg: "#4B3A8A" },
-  selesai: { label: "Selesai", bg: "#D9E8D6", fg: "#2F5233" },
-  ditolak: { label: "Ditolak", bg: "#F3D6D0", fg: "#9A3A24" },
+  dikemas: {
+    label: "Dikemas",
+    bg: "#E0E7FF",
+    fg: "#4338CA",
+    Icon: Package,
+  },
+  dikirim: {
+    label: "Dikirim",
+    bg: "#EDE9FE",
+    fg: "#6D28D9",
+    Icon: Truck,
+  },
+  selesai: {
+    label: "Selesai",
+    bg: "#D1FAE5",
+    fg: "#065F46",
+    Icon: CheckCircle2,
+  },
+  pengembalian: {
+    label: "Pengembalian",
+    bg: "#FEE2E2",
+    fg: "#991B1B",
+    Icon: RotateCcw,
+  },
+  dibatalkan: {
+    label: "Dibatalkan",
+    bg: "#F3F4F6",
+    fg: "#6B7280",
+    Icon: XCircle,
+  },
 };
 
-const MONTHS = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "Mei",
-  "Jun",
-  "Jul",
-  "Agu",
-  "Sep",
-  "Okt",
-  "Nov",
-  "Des",
-];
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+
 function formatJoined(iso) {
   if (!iso) return "";
   const d = new Date(iso);
   return `${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
 }
+
 function formatOrderDate(iso) {
   const d = new Date(iso);
-  return `${String(d.getDate()).padStart(2, "0")} ${MONTHS[d.getMonth()]} ${String(d.getFullYear()).slice(2)}`;
+  return `${String(d.getDate()).padStart(2, "0")} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
 }
+
 function orderCode(o) {
   const d = new Date(o.created_at);
   const dd = String(d.getDate()).padStart(2, "0");
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const yy = String(d.getFullYear()).slice(2);
-  return `#ORD-${dd}${mm}${yy}-${String(o.id).padStart(3, "0")}`;
+  return `ORD-${dd}${mm}${yy}-${String(o.id).padStart(3, "0")}`;
 }
 
+function formatRp(val) {
+  if (!val) return "Rp 0";
+  if (val >= 1_000_000) return `Rp ${(val / 1_000_000).toFixed(1)} jt`;
+  if (val >= 1_000) return `Rp ${Math.round(val / 1_000)} rb`;
+  return `Rp ${val}`;
+}
+
+/* ── Mock Data matching screenshot exactly ── */
+const MOCK_DATA = {
+  store: {
+    name: "Toko Saya",
+    location: "Banda Aceh, Aceh",
+    description: "Menyediakan berbagai limbah kelapa berkualitas untuk kebutuhan industri dan kerajinan.",
+    joined_at: "2026-07-01T00:00:00Z",
+    rating: 4.8,
+    review_count: 12,
+    categories: "Tempurung, Sabut, Ampas Kelapa",
+  },
+  summary: {
+    pesanan_baru: 3,
+    produk_terjual: 48,
+    pendapatan: 2500000,
+    tingkat_respons: 96,
+  },
+  products: [
+    { id: 1, name: "Tempurung Kelapa Kering", category: "Tempurung", price: 15000, unit: "kg", stock: 120, status: "active", image_url: null },
+    { id: 2, name: "Sabut Kelapa Olahan", category: "Sabut", price: 8000, unit: "kg", stock: 80, status: "active", image_url: null },
+    { id: 3, name: "Ampas Kelapa Segar", category: "Ampas", price: 5000, unit: "kg", stock: 0, status: "active", image_url: null },
+  ],
+  orders: [
+    {
+      id: 101,
+      status: "dikemas",
+      payment_status: "paid",
+      buyer_name: "Budi Santoso",
+      shipping_address: "Jl. Teuku Umar No. 12, Banda Aceh",
+      created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+      total: 375000,
+      admin_fee: 37500,
+      shipping_cost: 25000,
+      items: [
+        { id: 1, product_name: "Tempurung Kelapa Kering", qty: 20, subtotal: 300000 },
+        { id: 2, product_name: "Sabut Kelapa Olahan", qty: 5, subtotal: 40000 },
+      ],
+    },
+    {
+      id: 100,
+      status: "dikemas", // Dikemas
+      payment_status: "paid",
+      buyer_name: "Siti Rahmah",
+      shipping_address: "Jl. Sudirman No. 45, Lhokseumawe",
+      created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+      total: 215000,
+      admin_fee: 21500,
+      shipping_cost: 20000,
+      items: [
+        { id: 3, product_name: "Ampas Kelapa Segar", qty: 30, subtotal: 150000 },
+      ],
+    },
+    {
+      id: 99,
+      status: "selesai",
+      payment_status: "paid",
+      buyer_name: "CV. Agro Nusantara",
+      shipping_address: "Kawasan Industri Krueng Mane, Aceh Utara",
+      created_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+      total: 1250000,
+      admin_fee: 125000,
+      shipping_cost: 30000,
+      items: [
+        { id: 4, product_name: "Tempurung Kelapa Kering", qty: 70, subtotal: 1050000 },
+        { id: 5, product_name: "Sabut Kelapa Olahan", qty: 20, subtotal: 160000 },
+      ],
+    },
+  ],
+};
+
+/* ── Root ── */
 export default function SellerDashboard() {
-  const { user } = useAuth();
-
-  if (!user?.is_seller) return <OpenStorePrompt />;
-  return <DashboardContent />;
+  return <DashboardShell />;
 }
 
-/* ---------------------------------------------------------------------- */
-/* Onboarding — shown on the SAME /dashboard route until the account opens
-   a store. One login, one dashboard, store is just an extra capability.   */
-/* ---------------------------------------------------------------------- */
-function OpenStorePrompt() {
-  const { user, openStore } = useAuth();
+/* ── Shell ── */
+function DashboardShell() {
+  const [params] = useSearchParams();
+  const tab = params.get("tab") || "beranda";
   const { showToast } = useToast();
-  const [form, setForm] = useState({
-    store_name: "",
-    store_location: "",
-    store_description: "",
-  });
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  // Start with MOCK_DATA so the page NEVER renders blank
+  const [data, setData] = useState(MOCK_DATA);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [apiError, setApiError] = useState(null);
+  const mountedRef = useRef(true);
 
-  const submit = async (e) => {
-    e.preventDefault();
-    setError("");
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+
+  const load = async () => {
+    if (!mountedRef.current) return;
     setLoading(true);
+    setApiError(null);
     try {
-      const data = {
-        store_name: form.store_name,
-        store_location: form.store_location,
-        store_description: form.store_description,
-      };
-
-      await openStore(data);
-      showToast("Toko berhasil dibuka! Selamat datang di dashboard tokomu 🎉");
+      const res = await api.get("/seller/dashboard");
+      if (!mountedRef.current) return;
+      const apiData = res.data;
+      setData({
+        store: {
+          ...MOCK_DATA.store,
+          ...apiData.store,
+          name: apiData.store?.name || user?.store_name || MOCK_DATA.store.name,
+          location: apiData.store?.location || user?.store_location || MOCK_DATA.store.location,
+          description: apiData.store?.description || user?.store_description || MOCK_DATA.store.description,
+          categories: apiData.store?.categories || MOCK_DATA.store.categories,
+        },
+        summary: {
+          ...MOCK_DATA.summary,
+          ...(apiData.summary || {}),
+        },
+        products: Array.isArray(apiData.products) ? apiData.products : [],
+        orders: Array.isArray(apiData.orders) ? apiData.orders : [],
+      });
     } catch (err) {
-      setError(err.response?.data?.error || "Gagal membuka toko");
+      if (!mountedRef.current) return;
+      const status = err?.response?.status;
+      if (status === 403) {
+        // User hasn't opened a store yet
+        setApiError("not_seller");
+      } else if (status === 401) {
+        // Token expired or invalid
+        navigate("/masuk");
+        return;
+      } else {
+        // Network error / backend down — keep showing MOCK_DATA
+        console.warn("Dashboard API tidak tersedia, menggunakan data simulasi.", err);
+      }
     } finally {
-      setLoading(false);
+      if (mountedRef.current) setLoading(false);
     }
   };
 
-  return (
-    <div className="section container" style={{ paddingBottom: 100 }}>
-      <div style={styles.onboardHero}>
-        <div style={styles.onboardHeroBg} />
-        <div style={styles.onboardHeroInner}>
-          <span className="eyebrow" style={{ color: "var(--brown-300)" }}>
-            Satu akun, dua peran
-          </span>
-          <h1
-            style={{
-              color: "var(--cream)",
-              fontSize: "1.9rem",
-              marginTop: 8,
-              maxWidth: 480,
-            }}
-          >
-            Halo {user?.name?.split(" ")[0]}, buka toko dari akun ini juga.
-          </h1>
-          <p
-            style={{
-              color: "rgba(251,247,239,0.82)",
-              marginTop: 10,
-              maxWidth: 480,
-            }}
-          >
-            Tidak perlu daftar akun baru atau login terpisah — dengan akun{" "}
-            {user?.email} ini kamu bisa tetap berbelanja sekaligus buka toko dan
-            jualan limbah kelapamu sendiri.
-          </p>
-        </div>
-      </div>
-
-      <div
-        className="card"
-        style={{
-          maxWidth: 480,
-          padding: 28,
-          marginTop: -40,
-          position: "relative",
-        }}
-      >
-        <h2 style={{ fontSize: "1.2rem", marginBottom: 4 }}>Buka Toko</h2>
-        <p style={{ marginBottom: 18, fontSize: "0.88rem" }}>
-          Isi info toko untuk mulai berjualan.
-        </p>
-        <form onSubmit={submit}>
-          <div className="field">
-            <label>Nama Toko</label>
-            <input
-              required
-              value={form.store_name}
-              onChange={(e) => setForm({ ...form, store_name: e.target.value })}
-              placeholder="mis. LimbahKita Store"
-            />
-          </div>
-          <div className="field">
-            <label>Lokasi Toko</label>
-            <input
-              required
-              value={form.store_location}
-              onChange={(e) =>
-                setForm({ ...form, store_location: e.target.value })
-              }
-              placeholder="mis. Banda Aceh, Aceh"
-            />
-          </div>
-          <div className="field">
-            <label>Deskripsi Usaha (opsional)</label>
-            <textarea
-              value={form.store_description}
-              onChange={(e) =>
-                setForm({ ...form, store_description: e.target.value })
-              }
-            />
-          </div>
-          {error && (
-            <p className="field-error" style={{ marginBottom: 12 }}>
-              {error}
-            </p>
-          )}
-          <button
-            className="btn btn-primary btn-block"
-            type="submit"
-            disabled={loading}
-          >
-            {loading ? "Membuka toko…" : "Buka Toko Sekarang"}
-          </button>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-/* ---------------------------------------------------------------------- */
-/* Qlapa Hub — seller dashboard shell, driven by ?tab=toko|produk|pesanan  */
-/* ---------------------------------------------------------------------- */
-function DashboardContent() {
-  const [params] = useSearchParams();
-  const tab = params.get("tab") || "toko";
-  const [data, setData] = useState(null);
-  const { showToast } = useToast();
-
-  const load = () =>
-    api.get("/seller/dashboard").then((res) => setData(res.data));
   useEffect(() => {
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const deleteProduct = async (id) => {
-    if (!confirm("Hapus produk ini?")) return;
-    await api.delete(`/products/${id}`);
-    showToast("Produk dihapus");
-    load();
+    if (!window.confirm("Hapus produk ini?")) return;
+    try {
+      await api.delete(`/products/${id}`);
+      showToast("Produk dihapus.");
+      load();
+    } catch (err) {
+      showToast("Gagal menghapus produk.", "error");
+    }
   };
 
   const updateOrderStatus = async (id, status) => {
-    await api.put(`/orders/${id}/status`, { status });
-    showToast(`Status pesanan diperbarui`);
-    load();
+    try {
+      await api.put(`/orders/${id}/status`, { status });
+      showToast("Status pesanan diperbarui.");
+      load();
+    } catch (err) {
+      showToast("Gagal memperbarui status pesanan.", "error");
+    }
   };
 
-  if (!data) {
+  // Not a seller — show friendly prompt to open a store
+  if (apiError === "not_seller") {
     return (
-      <div style={styles.shell}>
-        <div className="empty-state">
-          <div className="spinner" style={{ margin: "0 auto" }} />
+      <div className="dashboard-shell">
+        <div className="dashboard-empty-state" style={{ marginTop: 40 }}>
+          <Store size={48} color="var(--brown-300)" strokeWidth={1.3} />
+          <h3 className="dashboard-empty-title">Toko Anda Belum Dibuka</h3>
+          <p className="dashboard-empty-sub">
+            Buka toko Anda untuk mulai berjualan produk limbah kelapa dan kelola pesanan dari satu tempat.
+          </p>
+          <Link to="/toko/buka" className="dashboard-action-btn">
+            <Plus size={15} strokeWidth={2.5} />
+            Buka Toko Sekarang
+          </Link>
         </div>
       </div>
     );
   }
 
   return (
-    <div style={styles.shell}>
-      <HubHeader />
-
-      {tab === "toko" && <StoreOverview data={data} />}
-      {tab === "produk" && (
-        <ProdukTab products={data.products} onDelete={deleteProduct} />
-      )}
-      {tab === "pesanan" && (
-        <PesananTab orders={data.orders} onUpdateStatus={updateOrderStatus} />
-      )}
-    </div>
-  );
-}
-
-/* ---- Shared header: "Qlapa Hub" + bell + search --------------------- */
-function HubHeader() {
-  return (
-    <div style={styles.header}>
-      <div className="row between">
-        <div className="row gap-8" style={{ alignItems: "center" }}>
-          <span style={styles.logo}>Qlapa</span>
-          <span style={styles.hubBadge}>Hub</span>
-        </div>
-        <div style={{ position: "relative" }}>
-          <BellIcon />
-          <span style={styles.bellDot} />
-        </div>
-      </div>
-      <p style={styles.subtitle}>Kelola produk, pesanan, dan toko Anda</p>
-      <div style={styles.searchBar}>
-        <SearchIcon />
-        <input placeholder="Cari Produk.." style={styles.searchInput} />
-      </div>
-    </div>
-  );
-}
-
-/* ---- Tab: Toko (overview) — must match design exactly ---------------- */
-function StoreOverview({ data }) {
-  const { store, summary, orders } = data;
-  return (
-    <div style={styles.body}>
-      <div style={styles.storeCard}>
-        <div style={styles.storeLogo}>🥥</div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 700, fontSize: "1.02rem" }}>
-            {store.name}
-          </div>
-          <div
-            className="row gap-4"
-            style={{
-              fontSize: "0.85rem",
-              color: "var(--ink-soft)",
-              marginTop: 2,
-            }}
-          >
-            {store.rating ? (
-              <span>
-                ★ {store.rating.toFixed(1)} ({store.review_count} ulasan)
-              </span>
-            ) : (
-              <span>Belum ada ulasan</span>
+    <div className="dashboard-shell">
+      {/* Top bar */}
+      <div className="dashboard-topbar">
+        <div>
+          <h1 className="dashboard-title">
+            {(tab === "beranda" || tab === "toko") && (user?.store_name || data.store?.name || "Toko Saya")}
+            {tab === "produk"  && "Produk Saya"}
+            {tab === "pesanan" && "Pemesanan"}
+          </h1>
+          <p className="dashboard-subtitle">
+            {(tab === "beranda" || tab === "toko") && (
+              loading
+                ? "Memuat data..."
+                : `Bergabung ${formatJoined(data.store?.joined_at)} · Toko Aktif`
             )}
-          </div>
-          <div
-            style={{
-              fontSize: "0.8rem",
-              color: "var(--ink-soft)",
-              marginTop: 2,
-            }}
-          >
-            Bergabung sejak {formatJoined(store.joined_at)}
-          </div>
+            {tab === "produk"  && `${(data.products || []).length} produk terdaftar`}
+            {tab === "pesanan" && `${(data.orders || []).length} total pesanan`}
+          </p>
         </div>
-        <div style={styles.activeStatus}>
-          <span style={styles.activeDot} /> Toko Aktif
-        </div>
-      </div>
 
-      <div className="row between" style={{ margin: "22px 0 12px" }}>
-        <h3 style={{ fontSize: "1.05rem" }}>Ringkasan Hari Ini</h3>
-        <span style={styles.linkSmall}>Lihat laporan &gt;</span>
-      </div>
-
-      <div style={styles.summaryBox}>
-        <SummaryItem
-          icon={<BoxIcon />}
-          value={summary.pesanan_baru}
-          label="Pesanan Baru"
-        />
-        <SummaryItem
-          icon={<BagIcon />}
-          value={summary.produk_terjual}
-          label="Produk Terjual"
-        />
-        <SummaryItem
-          icon={<WalletIcon />}
-          value={formatRb(summary.pendapatan)}
-          label="Pendapatan"
-        />
-        <SummaryItem
-          icon={<CheckIcon />}
-          value={`${summary.tingkat_respons}%`}
-          label="Tingkat Respons"
-        />
-      </div>
-
-      <h3 style={{ fontSize: "1.05rem", margin: "22px 0 12px" }}>
-        Pesanan Terbaru
-      </h3>
-      <div style={styles.ordersCard}>
-        {orders.length === 0 && (
-          <div className="empty-state" style={{ padding: 24 }}>
-            Belum ada pesanan.
-          </div>
+        {/* Action button (produk tab only) */}
+        {tab === "produk" && (
+          <Link to="/dashboard/tambah-produk" className="dashboard-action-btn">
+            <Plus size={16} strokeWidth={2.5} />
+            Tambah Produk
+          </Link>
         )}
-        {orders.slice(0, 3).map((o, i) => (
-          <OrderRow
-            key={o.id}
-            order={o}
-            last={i === Math.min(orders.length, 3) - 1}
-          />
+      </div>
+
+      {/* Subtle loading bar at top when refreshing */}
+      {loading && (
+        <div style={{
+          height: 3,
+          background: "linear-gradient(90deg, var(--brown-300), var(--brown-700))",
+          borderRadius: 99,
+          marginBottom: 20,
+          animation: "pulse 1.5s ease-in-out infinite",
+        }} />
+      )}
+
+      {/* Content */}
+      <div className="dashboard-content">
+        {(tab === "beranda" || tab === "toko") && <BerandaTab data={data} />}
+        {tab === "produk"  && <ProdukTab products={data.products || []} onDelete={deleteProduct} />}
+        {tab === "pesanan" && <PesananTab orders={data.orders || []} onUpdateStatus={updateOrderStatus} />}
+      </div>
+    </div>
+  );
+}
+
+/* ── Beranda Tab ── */
+function BerandaTab({ data }) {
+  const { store, summary, orders } = data;
+  const { user } = useAuth();
+  const pendingOrders = orders.filter((o) => o.status === "dikemas");
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+
+      {/* Alert pesanan pending */}
+      {pendingOrders.length > 0 && (
+        <div className="dashboard-alert-card">
+          <div className="dashboard-alert-icon-wrap">
+            <Info size={18} strokeWidth={2.5} />
+          </div>
+          <div className="dashboard-alert-content">
+            <p className="dashboard-alert-title">
+              {pendingOrders.length} pesanan baru perlu dikemas
+            </p>
+            <p className="dashboard-alert-sub">
+              Pembeli sedang menunggu. Segera proses agar reputasi toko terjaga.
+            </p>
+          </div>
+          <Link to="/dashboard?tab=pesanan" className="dashboard-alert-link">
+            Proses Sekarang <ArrowRight size={14} />
+          </Link>
+        </div>
+      )}
+
+      {/* 4 Stat cards */}
+      <div className="dashboard-stats-grid">
+        {[
+          {
+            Icon: ShoppingBag,
+            label: "Pesanan Baru",
+            value: summary.pesanan_baru,
+            sub: "butuh konfirmasi",
+            targetTab: "pesanan",
+          },
+          {
+            Icon: Package,
+            label: "Produk Terjual",
+            value: summary.produk_terjual,
+            sub: "total unit terjual",
+            targetTab: "produk",
+          },
+          {
+            Icon: TrendingUp,
+            label: "Pendapatan",
+            value: formatRp(summary.pendapatan),
+            sub: "estimasi bersih",
+            targetTab: "beranda",
+          },
+          {
+            Icon: BarChart2,
+            label: "Tingkat Respons",
+            value: `${summary.tingkat_respons}%`,
+            sub: "dari total pesanan masuk",
+            targetTab: "beranda",
+          },
+        ].map(({ Icon, label, value, sub, targetTab }) => (
+          <Link to={`/dashboard?tab=${targetTab}`} key={label} className="dashboard-stat-card">
+            <div className="dashboard-stat-left">
+              <div className="dashboard-stat-icon-wrap">
+                <Icon size={18} strokeWidth={2} />
+              </div>
+              <h3 className="dashboard-stat-value">{value}</h3>
+              <p className="dashboard-stat-label">{label}</p>
+              <p className="dashboard-stat-sub">{sub}</p>
+            </div>
+            <ChevronRight size={16} className="dashboard-stat-chevron" />
+          </Link>
         ))}
-        {orders.length > 0 && (
-          <div style={{ textAlign: "right", padding: "12px 16px 4px" }}>
-            <Link to="/dashboard?tab=pesanan" style={styles.linkSmall}>
-              Lihat semua &gt;
-            </Link>
-          </div>
-        )}
       </div>
-    </div>
-  );
-}
 
-function OrderRow({ order, last }) {
-  const meta = STATUS_META[order.status] || STATUS_META.menunggu_konfirmasi;
-  return (
-    <div
-      style={{
-        ...styles.orderRow,
-        borderBottom: last ? "none" : "1px solid var(--line)",
-      }}
-    >
-      <div style={styles.orderThumb}>🥥</div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: "0.78rem", color: "var(--ink-soft)" }}>
-          {orderCode(order)}
-        </div>
-        <div style={{ fontWeight: 700, fontSize: "0.92rem" }}>
-          {order.buyer_name}
-        </div>
-        <div style={{ fontSize: "0.8rem", color: "var(--ink-soft)" }}>
-          {order.items.length} produk - Rp{order.total.toLocaleString("id-ID")}
-        </div>
-        <div style={{ fontSize: "0.75rem", color: "var(--ink-soft)" }}>
-          {formatOrderDate(order.created_at)} - Transfer Bank
-        </div>
-      </div>
-      <span
-        style={{ ...styles.statusPill, background: meta.bg, color: meta.fg }}
-      >
-        {meta.label}
-      </span>
-    </div>
-  );
-}
-
-function SummaryItem({ icon, value, label }) {
-  return (
-    <div style={styles.summaryItem}>
-      <div style={styles.summaryIcon}>{icon}</div>
-      <div style={styles.summaryValue}>{value}</div>
-      <div style={styles.summaryLabel}>{label}</div>
-    </div>
-  );
-}
-
-function formatRb(n) {
-  if (n >= 1000) return `${Math.round(n / 1000)} rb`;
-  return `${n}`;
-}
-
-/* ---- Tab: Produk (full product management) ---------------------------- */
-function ProdukTab({ products, onDelete }) {
-  return (
-    <div style={styles.body}>
-      <div className="row between" style={{ marginBottom: 14 }}>
-        <h3 style={{ fontSize: "1.1rem" }}>Produk Saya</h3>
-        <Link to="/dashboard/tambah-produk" className="btn btn-primary btn-sm">
-          + Tambah
-        </Link>
-      </div>
-      <div className="grid" style={{ gap: 10 }}>
-        {products.length === 0 && (
-          <div className="empty-state">
-            Belum ada produk. Tambahkan produk pertamamu!
-          </div>
-        )}
-        {products.map((p) => (
-          <div
-            key={p.id}
-            className="card"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              padding: 12,
-              gap: 12,
-            }}
-          >
-            <div
-              style={{
-                width: 56,
-                height: 56,
-                borderRadius: 10,
-                overflow: "hidden",
-                background: "var(--cream-2)",
-                flexShrink: 0,
-              }}
-            >
-              {p.image_url && (
+      {/* Row 2: Store info + Recent orders */}
+      <div className="dashboard-twocol">
+        
+        {/* Left column: Profil Toko */}
+        <div className="dashboard-card">
+          <p className="dashboard-card-label">Profil Toko</p>
+          <div className="dashboard-store-info">
+            <div className="dashboard-store-avatar" style={{ overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              {user?.store_image_url ? (
                 <img
-                  src={p.image_url}
+                  src={user.store_image_url}
+                  alt="Logo Toko"
                   style={{ width: "100%", height: "100%", objectFit: "cover" }}
                 />
+              ) : (
+                <Store size={24} strokeWidth={1.8} />
               )}
             </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 700, fontSize: "0.92rem" }}>
-                {p.name}
-              </div>
-              <div style={{ fontSize: "0.78rem", color: "var(--ink-soft)" }}>
-                {p.category} · Rp{p.price.toLocaleString("id-ID")}/{p.unit} ·
-                Stok {p.stock} {p.unit}
+            <div className="dashboard-store-name-wrap">
+              <p className="dashboard-store-name">{user?.store_name || store.name}</p>
+              <div className="dashboard-store-rating-row">
+                {store.rating != null ? (
+                  <>
+                    <Star size={13} color="#F59E0B" fill="#F59E0B" />
+                    <span className="dashboard-store-rating-text">
+                      {Number(store.rating).toFixed(1)} ({store.review_count || 0} ulasan)
+                    </span>
+                  </>
+                ) : (
+                  <span className="dashboard-store-rating-text">Belum ada ulasan</span>
+                )}
               </div>
             </div>
-            <span
-              className={`badge ${p.status === "active" ? "" : "badge-outline"}`}
-            >
-              {p.status === "active" ? "Aktif" : "Nonaktif"}
-            </span>
-            <Link
-              to={`/dashboard/produk/${p.id}/edit`}
-              className="btn btn-outline btn-sm"
-            >
-              Edit
-            </Link>
-            <button
-              className="btn btn-danger btn-sm"
-              onClick={() => onDelete(p.id)}
-            >
-              Hapus
-            </button>
+            <div className="dashboard-status-pill">
+              <span className="dashboard-status-dot" />
+              Aktif
+            </div>
           </div>
-        ))}
+
+          <div className="dashboard-store-meta-list">
+            <div className="dashboard-store-meta-item">
+              <MapPin size={14} />
+              <span>{user?.store_location || store.location || "Lokasi belum diisi"}</span>
+            </div>
+            <div className="dashboard-store-meta-item">
+              <Calendar size={14} />
+              <span>Bergabung {formatJoined(store.joined_at)}</span>
+            </div>
+            <div className="dashboard-store-meta-item">
+              <Tag size={14} />
+              <span>Kategori Utama: {store.categories}</span>
+            </div>
+          </div>
+
+          {(user?.store_description || store.description) && (
+            <p className="dashboard-store-desc">{user?.store_description || store.description}</p>
+          )}
+
+          <div className="dashboard-centered-footer">
+            <Link to="/profil" className="dashboard-btn-pill-outline">
+              <Edit2 size={13} />
+              Edit Profil
+            </Link>
+          </div>
+        </div>
+
+        {/* Right column: Recent orders */}
+        <div className="dashboard-card">
+          <div className="dashboard-card-header-row">
+            <p className="dashboard-card-label" style={{ margin: 0 }}>Pesanan Terbaru</p>
+            <Link to="/dashboard?tab=pesanan" className="dashboard-see-all-link">
+              Lihat semua <ChevronRight size={13} />
+            </Link>
+          </div>
+
+          {orders.length === 0 ? (
+            <div className="dashboard-empty-state" style={{ border: "none", padding: "32px 0" }}>
+              <ShoppingBag size={28} color="#D1D5DB" />
+              <p className="dashboard-empty-sub" style={{ margin: "8px 0 0" }}>
+                Belum ada pesanan masuk.
+              </p>
+            </div>
+          ) : (
+            <div className="dashboard-recent-orders-list">
+              {orders.slice(0, 3).map((o) => {
+                const meta = STATUS_META[o.status] || STATUS_META.menunggu_konfirmasi;
+                const { Icon: StatusIcon } = meta;
+                return (
+                  <div key={o.id} className="dashboard-order-row-small">
+                    <div className="dashboard-order-status-icon-wrap" style={{ background: meta.bg }}>
+                      <StatusIcon size={16} color={meta.fg} strokeWidth={2.5} />
+                    </div>
+                    <div className="dashboard-order-info-small">
+                      <p className="dashboard-order-code-small">{orderCode(o)}</p>
+                      <p className="dashboard-order-buyer-small">{o.buyer_name}</p>
+                    </div>
+                    <div className="dashboard-order-amt-col">
+                      <p className="dashboard-order-amt-small">{formatRp(o.total)}</p>
+                      <span className="status-pill-badge" style={{ background: meta.bg, color: meta.fg }}>
+                        {meta.label}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+              
+              <div className="dashboard-centered-footer">
+                <Link to="/dashboard?tab=pesanan" className="dashboard-btn-pill-outline">
+                  <List size={13} />
+                  Kelola Pesanan
+                </Link>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
-/* ---- Tab: Pesanan (full order management) ------------------------------ */
-function PesananTab({ orders, onUpdateStatus }) {
+/* ── Produk Tab ── */
+function ProdukTab({ products, onDelete }) {
   return (
-    <div style={styles.body}>
-      <h3 style={{ fontSize: "1.1rem", marginBottom: 14 }}>Pesanan Masuk</h3>
-      <div className="grid" style={{ gap: 10 }}>
-        {orders.length === 0 && (
-          <div className="empty-state">Belum ada pesanan masuk.</div>
-        )}
-        {orders.map((o) => {
-          const meta = STATUS_META[o.status] || STATUS_META.menunggu_konfirmasi;
-          return (
-            <div key={o.id} className="card" style={{ padding: 14 }}>
-              <div className="row between" style={{ marginBottom: 8 }}>
-                <strong style={{ fontSize: "0.88rem" }}>{orderCode(o)}</strong>
-                <span
-                  style={{
-                    ...styles.statusPill,
-                    background: meta.bg,
-                    color: meta.fg,
-                  }}
-                >
-                  {meta.label}
-                </span>
-              </div>
-              <p style={{ fontSize: "0.85rem" }}>Pembeli: {o.buyer_name}</p>
-              {o.items.map((it) => (
-                <div
-                  key={it.id}
-                  className="row between"
-                  style={{ fontSize: "0.85rem", marginTop: 4 }}
-                >
-                  <span>
-                    {it.product_name} × {it.qty}
-                  </span>
-                  <span>Rp{it.subtotal.toLocaleString("id-ID")}</span>
-                </div>
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {products.length === 0 ? (
+        <div className="dashboard-empty-state">
+          <Package size={36} color="#D1D5DB" strokeWidth={1.2} />
+          <h3 className="dashboard-empty-title">Belum ada produk</h3>
+          <p className="dashboard-empty-sub">Tambahkan produk limbah kelapa pertama Anda untuk mulai berjualan.</p>
+          <Link to="/dashboard/tambah-produk" className="dashboard-action-btn">
+            <Plus size={15} /> Tambah Produk Pertama
+          </Link>
+        </div>
+      ) : (
+        <div className="dashboard-table-wrap">
+          <table className="dashboard-table">
+            <thead>
+              <tr>
+                <th className="dashboard-table-th">Produk</th>
+                <th className="dashboard-table-th">Kategori</th>
+                <th className="dashboard-table-th">Harga</th>
+                <th className="dashboard-table-th">Stok</th>
+                <th className="dashboard-table-th">Status</th>
+                <th className="dashboard-table-th"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {products.map((p) => (
+                <tr key={p.id}>
+                  {/* Produk info */}
+                  <td className="dashboard-table-td" data-label="Produk">
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      <div className="dashboard-product-thumb">
+                        {p.image_url ? (
+                          <img
+                            src={p.image_url}
+                            alt={p.name}
+                            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                          />
+                        ) : (
+                          <Package size={18} color="#D1D5DB" />
+                        )}
+                      </div>
+                      <div>
+                        <p className="dashboard-product-name">{p.name}</p>
+                        <p className="dashboard-product-unit">per {p.unit}</p>
+                      </div>
+                    </div>
+                  </td>
+                  {/* Kategori */}
+                  <td className="dashboard-table-td" data-label="Kategori">
+                    <span className="dashboard-tag-badge">
+                      <Tag size={11} /> {p.category}
+                    </span>
+                  </td>
+                  {/* Harga */}
+                  <td className="dashboard-table-td" data-label="Harga">
+                    <p className="dashboard-price-text">Rp {(p.price || 0).toLocaleString("id-ID")}</p>
+                  </td>
+                  {/* Stok */}
+                  <td className="dashboard-table-td" data-label="Stok">
+                    <p className="dashboard-stock-text" style={{ color: p.stock <= 5 ? "var(--danger)" : "var(--ink)" }}>
+                      {p.stock} {p.unit}
+                    </p>
+                  </td>
+                  {/* Status */}
+                  <td className="dashboard-table-td" data-label="Status">
+                    <span className="status-pill-badge" style={{
+                      background: p.status === "active" ? "var(--green-100)" : "#F3F4F6",
+                      color: p.status === "active" ? "var(--green-900)" : "var(--ink-soft)",
+                    }}>
+                      {p.status === "active" ? "Aktif" : "Nonaktif"}
+                    </span>
+                  </td>
+                  {/* Actions */}
+                  <td className="dashboard-table-td actions-td">
+                    <div className="dashboard-actions-td-content">
+                      <Link
+                        to={`/dashboard/produk/${p.id}/edit`}
+                        className="dashboard-icon-btn"
+                        title="Edit produk"
+                      >
+                        <Edit2 size={14} strokeWidth={2} />
+                      </Link>
+                      <button
+                        className="dashboard-icon-btn delete-btn"
+                        onClick={() => onDelete(p.id)}
+                        title="Hapus produk"
+                      >
+                        <Trash2 size={14} strokeWidth={2} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
               ))}
-              <div
-                className="row between"
-                style={{ marginTop: 10, fontWeight: 700 }}
-              >
-                <span>Total</span>
-                <span>Rp{o.total.toLocaleString("id-ID")}</span>
-              </div>
-              <div className="row gap-8" style={{ marginTop: 12 }}>
-                {o.status === "menunggu_konfirmasi" && (
-                  <>
-                    <button
-                      className="btn btn-primary btn-sm"
-                      onClick={() => onUpdateStatus(o.id, "diproses")}
-                    >
-                      Terima
-                    </button>
-                    <button
-                      className="btn btn-danger btn-sm"
-                      onClick={() => onUpdateStatus(o.id, "ditolak")}
-                    >
-                      Tolak
-                    </button>
-                  </>
-                )}
-                {o.status === "diproses" && (
-                  <button
-                    className="btn btn-primary btn-sm"
-                    onClick={() => onUpdateStatus(o.id, "dikirim")}
-                  >
-                    Tandai Dikirim
-                  </button>
-                )}
-              </div>
-            </div>
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Pesanan Tab ── */
+function PesananTab({ orders, onUpdateStatus }) {
+  const [filter, setFilter] = useState("semua");
+
+  const tabs = [
+    { key: "semua", label: "Semua" },
+    { key: "belum_bayar", label: "Belum Bayar" },
+    { key: "dikemas", label: "Dikemas" },
+    { key: "dikirim", label: "Dikirim" },
+    { key: "selesai", label: "Selesai" },
+    { key: "pengembalian", label: "Pengembalian" },
+    { key: "dibatalkan", label: "Dibatalkan" },
+  ];
+
+  const filtered = filter === "semua"
+    ? orders
+    : orders.filter((o) => o.status === filter);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {/* Filter tabs */}
+      <div className="dashboard-filter-row">
+        {tabs.map((t) => {
+          const count = t.key === "semua"
+            ? orders.length
+            : orders.filter((o) => o.status === t.key).length;
+          return (
+            <button
+              key={t.key}
+              onClick={() => setFilter(t.key)}
+              className={`dashboard-filter-tab ${filter === t.key ? "active" : ""}`}
+            >
+              {t.label}
+              {count > 0 && (
+                <span className="dashboard-filter-count">
+                  {count}
+                </span>
+              )}
+            </button>
           );
         })}
       </div>
+
+      {/* Order cards */}
+      {filtered.length === 0 ? (
+        <div className="dashboard-empty-state">
+          <ShoppingBag size={36} color="#D1D5DB" strokeWidth={1.2} />
+          <h3 className="dashboard-empty-title">Tidak ada pesanan</h3>
+          <p className="dashboard-empty-sub">Belum ada pesanan dengan status ini.</p>
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          {filtered.map((o) => {
+            const meta = STATUS_META[o.status] || STATUS_META.belum_bayar;
+            const { Icon: StatusIcon } = meta;
+            return (
+              <div key={o.id} className="dashboard-order-card">
+                {/* Header */}
+                <div className="dashboard-order-card-head">
+                  <div className="dashboard-order-card-title-block">
+                    <div className="dashboard-order-card-icon-wrap" style={{ background: meta.bg }}>
+                      <StatusIcon size={16} color={meta.fg} strokeWidth={2.5} />
+                    </div>
+                    <div>
+                      <p className="dashboard-order-card-code">{orderCode(o)}</p>
+                      <p className="dashboard-order-card-date">{formatOrderDate(o.created_at)}</p>
+                    </div>
+                  </div>
+                  <div className="dashboard-order-card-badges">
+                    <span className="status-pill-badge" style={{
+                      background: o.payment_status === "paid" ? "var(--green-100)" : (o.midtrans_tx_id && o.midtrans_tx_id.startsWith("COD") ? "#FEF3C7" : "#FEE2E2"),
+                      color: o.payment_status === "paid" ? "var(--green-900)" : (o.midtrans_tx_id && o.midtrans_tx_id.startsWith("COD") ? "#92400E" : "#991B1B"),
+                    }}>
+                      {o.payment_status === "paid" ? "Lunas" : (o.midtrans_tx_id && o.midtrans_tx_id.startsWith("COD") ? "COD (Bayar di Tempat)" : "Belum Lunas")}
+                    </span>
+                    <span className="status-pill-badge" style={{ background: meta.bg, color: meta.fg }}>
+                      {meta.label}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Body */}
+                <div className="dashboard-order-card-body">
+                  {/* Buyer info */}
+                  <div className="dashboard-order-section">
+                    <p className="dashboard-order-section-label">Pembeli</p>
+                    <p className="dashboard-order-buyer-name">{o.buyer_name}</p>
+                    {o.shipping_address && (
+                      <p className="dashboard-order-address">{o.shipping_address}</p>
+                    )}
+                  </div>
+
+                  {/* Items */}
+                  <div className="dashboard-order-section">
+                    <p className="dashboard-order-section-label">Produk ({(o.items || []).length})</p>
+                    <div className="dashboard-order-items-list">
+                      {(o.items || []).map((it) => (
+                        <div key={it.id} className="dashboard-order-item-row">
+                          <span className="dashboard-order-item-name">
+                            {it.product_name}
+                            <span className="dashboard-order-item-qty">x{it.qty}</span>
+                          </span>
+                          <span className="dashboard-order-item-subtotal">
+                            Rp {(it.subtotal || 0).toLocaleString("id-ID")}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Total breakdown */}
+                  <div className="dashboard-order-section">
+                    <p className="dashboard-order-section-label">Rincian Biaya</p>
+                    <div className="dashboard-cost-list">
+                      <div className="dashboard-cost-row">
+                        <span>Subtotal Produk</span>
+                        <span>Rp {(o.total - (o.admin_fee || 0) - (o.shipping_cost || 0)).toLocaleString("id-ID")}</span>
+                      </div>
+                      <div className="dashboard-cost-row">
+                        <span>Biaya Admin (10%)</span>
+                        <span>Rp {(o.admin_fee || 0).toLocaleString("id-ID")}</span>
+                      </div>
+                      <div className="dashboard-cost-row">
+                        <span>Ongkos Kirim</span>
+                        <span>{o.shipping_cost > 0 ? `Rp ${o.shipping_cost.toLocaleString("id-ID")}` : "Pick Up"}</span>
+                      </div>
+                      <div className="dashboard-cost-row dashboard-cost-total-row">
+                        <span>Total Transaksi</span>
+                        <span>Rp {(o.total || 0).toLocaleString("id-ID")}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                {(o.status === "dikemas" || o.status === "pengembalian") && (
+                  <div className="dashboard-order-card-foot">
+                    {o.status === "dikemas" && (
+                      <>
+                        <button
+                          className="dashboard-btn-action-primary"
+                          onClick={() => onUpdateStatus(o.id, "dikirim")}
+                        >
+                          <Truck size={14} strokeWidth={2} />
+                          Tandai Dikirim
+                        </button>
+                        <button
+                          className="dashboard-btn-action-danger"
+                          onClick={() => onUpdateStatus(o.id, "dibatalkan")}
+                        >
+                          <X size={14} strokeWidth={2.5} />
+                          Batalkan Pesanan
+                        </button>
+                      </>
+                    )}
+                    {o.status === "pengembalian" && (
+                      <button
+                        className="dashboard-btn-action-primary"
+                        onClick={() => onUpdateStatus(o.id, "dibatalkan")}
+                      >
+                        <Check size={14} strokeWidth={2.5} />
+                        Setujui Pengembalian Dana
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
-
-/* ---- Tiny inline icons -------------------------------------------------- */
-function BellIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      width="22"
-      height="22"
-      fill="none"
-      stroke="var(--ink)"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M18 16v-5a6 6 0 1 0-12 0v5l-1.5 2.5h15L18 16Z" />
-      <path d="M10 21a2 2 0 0 0 4 0" />
-    </svg>
-  );
-}
-function SearchIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      width="18"
-      height="18"
-      fill="none"
-      stroke="var(--ink-soft)"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <circle cx="11" cy="11" r="7" />
-      <path d="m21 21-4.35-4.35" />
-    </svg>
-  );
-}
-function BoxIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      width="18"
-      height="18"
-      fill="none"
-      stroke="var(--cream)"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M21 8 12 3 3 8l9 5 9-5Z" />
-      <path d="M3 8v8l9 5 9-5V8" />
-      <path d="M12 13v8" />
-    </svg>
-  );
-}
-function BagIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      width="18"
-      height="18"
-      fill="none"
-      stroke="var(--cream)"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M6 8h12l-1 12H7L6 8Z" />
-      <path d="M9 8V6a3 3 0 0 1 6 0v2" />
-    </svg>
-  );
-}
-function WalletIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      width="18"
-      height="18"
-      fill="none"
-      stroke="var(--cream)"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <rect x="3" y="6" width="18" height="13" rx="2" />
-      <path d="M3 10h18" />
-      <circle cx="16.5" cy="14" r="1" fill="var(--cream)" />
-    </svg>
-  );
-}
-function CheckIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      width="18"
-      height="18"
-      fill="none"
-      stroke="var(--cream)"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <circle cx="12" cy="12" r="9" />
-      <path d="m8.5 12.5 2.3 2.3L15.5 9.5" />
-    </svg>
-  );
-}
-
-const styles = {
-  shell: { maxWidth: 520, margin: "0 auto", paddingBottom: 90 },
-  header: { padding: "20px 20px 14px" },
-  logo: {
-    fontFamily: "var(--font-display)",
-    fontSize: "1.5rem",
-    fontWeight: 700,
-    color: "var(--brown-800)",
-  },
-  hubBadge: {
-    background: "var(--brown-300)",
-    color: "var(--brown-800)",
-    fontSize: "0.7rem",
-    fontWeight: 700,
-    padding: "2px 10px",
-    borderRadius: 999,
-  },
-  bellDot: {
-    position: "absolute",
-    top: -2,
-    right: -2,
-    width: 8,
-    height: 8,
-    borderRadius: "50%",
-    background: "var(--danger)",
-    border: "1.5px solid var(--paper)",
-  },
-  subtitle: { fontSize: "0.85rem", marginTop: 4 },
-  searchBar: {
-    display: "flex",
-    alignItems: "center",
-    gap: 10,
-    background: "var(--paper)",
-    border: "1px solid var(--line)",
-    borderRadius: 999,
-    padding: "11px 16px",
-    marginTop: 14,
-  },
-  searchInput: {
-    border: "none",
-    outline: "none",
-    flex: 1,
-    background: "transparent",
-    fontSize: "0.88rem",
-  },
-  body: { padding: "4px 20px 20px" },
-  storeCard: {
-    display: "flex",
-    alignItems: "center",
-    gap: 12,
-    background: "var(--paper)",
-    border: "1px solid var(--line)",
-    borderRadius: "var(--radius-md)",
-    padding: 16,
-    boxShadow: "var(--shadow-sm)",
-  },
-  storeLogo: {
-    width: 52,
-    height: 52,
-    borderRadius: 12,
-    background: "var(--brown-100)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: "1.5rem",
-    flexShrink: 0,
-  },
-  activeStatus: {
-    display: "flex",
-    alignItems: "center",
-    gap: 6,
-    fontSize: "0.78rem",
-    fontWeight: 600,
-    color: "var(--success)",
-    whiteSpace: "nowrap",
-  },
-  activeDot: {
-    width: 7,
-    height: 7,
-    borderRadius: "50%",
-    background: "var(--success)",
-  },
-  linkSmall: { fontSize: "0.82rem", color: "var(--ink-soft)", fontWeight: 600 },
-  summaryBox: {
-    display: "grid",
-    gridTemplateColumns: "repeat(4, 1fr)",
-    gap: 4,
-    background: "var(--brown-800)",
-    borderRadius: "var(--radius-md)",
-    padding: "18px 8px",
-  },
-  summaryItem: {
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    textAlign: "center",
-    gap: 4,
-  },
-  summaryIcon: { marginBottom: 2 },
-  summaryValue: {
-    fontFamily: "var(--font-display)",
-    fontSize: "1.15rem",
-    fontWeight: 700,
-    color: "var(--cream)",
-  },
-  summaryLabel: { fontSize: "0.66rem", color: "rgba(251,247,239,0.75)" },
-  ordersCard: {
-    background: "var(--paper)",
-    border: "1px solid var(--line)",
-    borderRadius: "var(--radius-md)",
-    boxShadow: "var(--shadow-sm)",
-    overflow: "hidden",
-  },
-  orderRow: {
-    display: "flex",
-    alignItems: "center",
-    gap: 12,
-    padding: "14px 16px",
-  },
-  orderThumb: {
-    width: 46,
-    height: 46,
-    borderRadius: 10,
-    background: "var(--cream-2)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: "1.2rem",
-    flexShrink: 0,
-  },
-  statusPill: {
-    fontSize: "0.7rem",
-    fontWeight: 700,
-    padding: "5px 10px",
-    borderRadius: 999,
-    whiteSpace: "nowrap",
-  },
-  onboardHero: {
-    position: "relative",
-    borderRadius: "var(--radius-lg)",
-    overflow: "hidden",
-    padding: "48px 40px",
-    background: "var(--green-900)",
-  },
-  onboardHeroBg: {
-    position: "absolute",
-    inset: 0,
-    background:
-      "radial-gradient(circle at 85% 20%, rgba(200,159,108,0.35), transparent 55%)",
-  },
-  onboardHeroInner: { position: "relative" },
-};

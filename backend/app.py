@@ -13,10 +13,23 @@ from flask_jwt_extended import (
     JWTManager, create_access_token, jwt_required, get_jwt_identity
 )
 
-load_dotenv()
+load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env'))
 
-from models import db, User, Product, Order, OrderItem, ChatMessage, Review
-from ai_engine import (
+import midtransclient
+import hashlib
+
+print("Midtrans Server Key Loaded:", "Yes" if os.environ.get("MIDTRANS_SERVER_KEY") else "No")
+print("Midtrans Client Key Loaded:", "Yes" if os.environ.get("MIDTRANS_CLIENT_KEY") else "No")
+
+# Initialize Midtrans Snap client
+midtrans_snap = midtransclient.Snap(
+    is_production=False,
+    server_key=os.environ.get("MIDTRANS_SERVER_KEY"),
+    client_key=os.environ.get("MIDTRANS_CLIENT_KEY")
+)
+
+from models import db, User, Product, Order, OrderItem, ChatMessage, Review, CartItem, AIChatSession
+from ai_client import (
     ai_suggest_product_fields,
     analyze_product_image,
     generate_ai_description,
@@ -27,16 +40,37 @@ from ai_engine import (
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
 app = Flask(__name__)
-app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{os.path.join(BASE_DIR, 'qlapa.db')}"
+
+# Support DATABASE_URL from Railway/Render (PostgreSQL) or fallback to local SQLite
+db_url = os.environ.get("DATABASE_URL", f"sqlite:///{os.path.join(BASE_DIR, 'qlapa.db')}")
+# Fix Railway's postgres:// → postgresql:// (SQLAlchemy 1.4+)
+if db_url.startswith("postgres://"):
+    db_url = db_url.replace("postgres://", "postgresql://", 1)
+app.config["SQLALCHEMY_DATABASE_URI"] = db_url
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-app.config["JWT_SECRET_KEY"] = "qlapa-dev-secret-change-me"
+app.config["JWT_SECRET_KEY"] = os.environ.get("JWT_SECRET_KEY", "qlapa-dev-secret-change-me")
 app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(days=7)
 
 CORS(app, resources={r"/api/*": {"origins": "*"}})
 db.init_app(app)
 jwt = JWTManager(app)
 
-CATEGORIES = ["Ampas", "Tempurung", "Sabut", "Daun", "Air Kelapa"]
+CATEGORIES = [
+    "Ampas",
+    "Tempurung",
+    "Sabut",
+    "Daun",
+    "Air Kelapa",
+    "Cocopeat",
+    "Cocofiber",
+    "Briket Arang",
+    "Arang Aktif",
+    "Nata de Coco",
+    "Minyak Kelapa",
+    "VCO",
+    "Tepung Kelapa",
+    "Kerajinan Kelapa",
+]
 
 
 # ---------------------------------------------------------------------------
@@ -113,6 +147,53 @@ def login():
     return jsonify({"token": token, "user": user.to_dict()})
 
 
+@app.post("/api/auth/google")
+def google_login():
+    import json
+    import urllib.request
+    import uuid
+    data = request.get_json(force=True)
+    credential = data.get("credential")
+    if not credential:
+        return jsonify({"error": "Google ID Token wajib disertakan"}), 400
+    try:
+        url = f"https://oauth2.googleapis.com/tokeninfo?id_token={credential}"
+        req = urllib.request.Request(url)
+        with urllib.request.urlopen(req) as response:
+            token_info = json.loads(response.read().decode("utf-8"))
+        aud = token_info.get("aud")
+        expected_aud = "476986015276-805dhprpatpn6o8ij3dejv6efusrcauv.apps.googleusercontent.com"
+        if aud != expected_aud:
+            return jsonify({"error": "Token tidak valid untuk client ID ini"}), 400
+        email = token_info.get("email")
+        if not email:
+            return jsonify({"error": "Email Google tidak ditemukan"}), 400
+        name = token_info.get("name", email.split("@")[0])
+        avatar_url = token_info.get("picture")
+        user = User.query.filter_by(email=email).first()
+        if not user:
+            user = User(
+                name=name,
+                email=email,
+                role="buyer",
+                avatar_url=avatar_url,
+                is_seller=False,
+                is_admin=False
+            )
+            user.set_password(str(uuid.uuid4()))
+            db.session.add(user)
+            db.session.commit()
+        else:
+            if avatar_url and not user.avatar_url:
+                user.avatar_url = avatar_url
+                db.session.commit()
+        token = create_access_token(identity=str(user.id))
+        return jsonify({"token": token, "user": user.to_dict()})
+    except Exception as e:
+        print("Google Auth Error:", e)
+        return jsonify({"error": "Gagal autentikasi via Google"}), 400
+
+
 @app.get("/api/auth/me")
 @jwt_required()
 def me():
@@ -127,7 +208,7 @@ def me():
 def update_me():
     user = current_user()
     data = request.get_json(force=True)
-    for field in ["name", "phone", "store_name", "store_location", "store_description"]:
+    for field in ["name", "phone", "address", "store_name", "store_location", "store_description"]:
         if field in data:
             setattr(user, field, data[field])
     db.session.commit()
@@ -345,6 +426,7 @@ def analyze_product_image_route():
             "quality": result.get("quality"),
             "notes": result.get("notes", ""),
             "stock_estimate": result.get("stock_estimate"),
+            "price_estimate": result.get("price_estimate"),
             "ai_description": result["ai_description"],
             "confidence": result.get("confidence"),
             "low_confidence": result.get("low_confidence", False),
@@ -443,14 +525,18 @@ def seller_dashboard():
 @app.post("/api/orders")
 @jwt_required()
 def create_order():
-    """Body: { items: [{product_id, qty}], shipping_address }
-    Membuat 1 order per seller (mengelompokkan item keranjang berdasarkan penjual)."""
+    """Body: { items: [{product_id, qty}], shipping_address, shipping_method }
+    Membuat 1 order per seller, menghitung biaya admin 10%, ongkos kirim, dan membuat transaksi Midtrans Snap."""
     user = current_user()
 
     data = request.get_json(force=True)
     items = data.get("items", [])
     if not items:
         return jsonify({"error": "Keranjang kosong"}), 400
+
+    shipping_method = data.get("shipping_method", "kirim")
+    shipping_address = data.get("shipping_address", "")
+    payment_method = data.get("payment_method", "midtrans")
 
     grouped = {}
     for it in items:
@@ -461,26 +547,170 @@ def create_order():
             return jsonify({"error": f"Stok {product.name} tidak mencukupi"}), 400
         grouped.setdefault(product.seller_id, []).append((product, it["qty"]))
 
+    import time
+    if payment_method == "cod":
+        midtrans_tx_id = f"COD-{int(time.time() * 1000)}-{user.id}"
+    else:
+        midtrans_tx_id = f"QLAPA-TX-{int(time.time() * 1000)}-{user.id}"
+
     created_orders = []
+    combined_total = 0
+    midtrans_items = []
+
     for seller_id, pairs in grouped.items():
-        total = sum(p.price * qty for p, qty in pairs)
+        subtotal = sum(p.price * qty for p, qty in pairs)
+        admin_fee = round(subtotal * 0.10)
+        shipping_cost = 10000.0 if shipping_method == "kirim" else 0.0
+        order_total = subtotal + admin_fee + shipping_cost
+
         order = Order(
             buyer_id=user.id,
             seller_id=seller_id,
-            total=total,
-            shipping_address=data.get("shipping_address", ""),
+            total=order_total,
+            admin_fee=admin_fee,
+            shipping_cost=shipping_cost,
+            shipping_address=shipping_address if shipping_method == "kirim" else "Ambil Sendiri (Pick Up)",
             status="menunggu_konfirmasi",
+            payment_status="pending",
+            midtrans_tx_id=midtrans_tx_id
         )
         db.session.add(order)
         db.session.flush()
+
         for p, qty in pairs:
             db.session.add(OrderItem(order_id=order.id, product_id=p.id,
                                       product_name=p.name, qty=qty, price=p.price))
             p.stock -= qty
+            
+            midtrans_items.append({
+                "id": f"prod-{p.id}",
+                "price": int(p.price),
+                "quantity": int(qty),
+                "name": p.name[:50]
+            })
+
+        # Biaya admin
+        midtrans_items.append({
+            "id": f"admin-{order.id}",
+            "price": int(admin_fee),
+            "quantity": 1,
+            "name": f"Biaya Admin 10% (Pesanan #{order.id})"
+        })
+
+        # Ongkos kirim
+        if shipping_cost > 0:
+            midtrans_items.append({
+                "id": f"ship-{order.id}",
+                "price": int(shipping_cost),
+                "quantity": 1,
+                "name": f"Ongkos Kirim (Pesanan #{order.id})"
+            })
+
+        combined_total += order_total
         created_orders.append(order)
 
+    # Request snap token ke Midtrans
+    snap_param = {
+        "transaction_details": {
+            "order_id": midtrans_tx_id,
+            "gross_amount": int(combined_total)
+        },
+        "item_details": midtrans_items,
+        "customer_details": {
+            "first_name": user.name,
+            "email": user.email,
+            "phone": user.phone or ""
+        }
+    }
+
+    if payment_method == "cod":
+        for order in created_orders:
+            order.snap_token = "COD"
+        db.session.commit()
+        return jsonify({
+            "snap_token": "COD",
+            "orders": [o.serialize() for o in created_orders]
+        }), 201
+
+    try:
+        transaction = midtrans_snap.create_transaction(snap_param)
+        snap_token = transaction.get("token")
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": f"Gagal membuat transaksi Midtrans: {str(e)}"}), 500
+
+    for order in created_orders:
+        order.snap_token = snap_token
+
     db.session.commit()
-    return jsonify([o.serialize() for o in created_orders]), 201
+
+    return jsonify({
+        "snap_token": snap_token,
+        "orders": [o.serialize() for o in created_orders]
+    }), 201
+
+
+@app.post("/api/payments/notification")
+def midtrans_webhook():
+    """Webhook callback dari Midtrans untuk mengupdate status pembayaran secara otomatis."""
+    data = request.get_json(force=True)
+    
+    server_key = os.environ.get("MIDTRANS_SERVER_KEY", "")
+    order_id = data.get("order_id", "")
+    status_code = data.get("status_code", "")
+    gross_amount = data.get("gross_amount", "")
+    signature_key = data.get("signature_key", "")
+    
+    payload = f"{order_id}{status_code}{gross_amount}{server_key}"
+    calculated = hashlib.sha512(payload.encode('utf-8')).hexdigest()
+    
+    if calculated != signature_key:
+        return jsonify({"error": "Signature tidak valid"}), 400
+        
+    transaction_status = data.get("transaction_status")
+    fraud_status = data.get("fraud_status")
+    
+    is_success = False
+    if transaction_status == "capture":
+        if fraud_status == "accept":
+            is_success = True
+    elif transaction_status == "settlement":
+        is_success = True
+        
+    if is_success:
+        orders = Order.query.filter_by(midtrans_tx_id=order_id).all()
+        for o in orders:
+            o.payment_status = "paid"
+        db.session.commit()
+    elif transaction_status in ["deny", "expire", "cancel"]:
+        orders = Order.query.filter_by(midtrans_tx_id=order_id).all()
+        for o in orders:
+            o.payment_status = "failed"
+            # Kembalikan stok
+            for item in o.items:
+                product = db.session.get(Product, item.product_id)
+                if product:
+                    product.stock += item.qty
+        db.session.commit()
+        
+    return jsonify({"status": "OK"}), 200
+
+
+@app.post("/api/orders/pay-success")
+@jwt_required()
+def pay_success():
+    """Callback cadangan dari frontend jika webhook tertunda."""
+    data = request.get_json(force=True)
+    snap_token = data.get("snap_token")
+    if not snap_token:
+        return jsonify({"error": "Snap token wajib diisi"}), 400
+        
+    orders = Order.query.filter_by(snap_token=snap_token).all()
+    for o in orders:
+        o.payment_status = "paid"
+    db.session.commit()
+    
+    return jsonify({"message": "Status pembayaran berhasil diperbarui"}), 200
 
 
 @app.get("/api/orders")
@@ -606,9 +836,114 @@ def ai_chat():
 @app.get("/api/ai/recommendation")
 def ai_recommendation():
     category = request.args.get("category")
+    product_name = request.args.get("product_name", "")
     if not category:
         return jsonify({"error": "Parameter category wajib diisi"}), 400
-    return jsonify({"recommendation": get_recommendation(category)})
+    return jsonify({"recommendation": get_recommendation(category, question=product_name)})
+
+
+# ---------------------------------------------------------------------------
+# Cart Sync Endpoints
+# ---------------------------------------------------------------------------
+@app.get("/api/cart")
+@jwt_required()
+def get_cart():
+    user = current_user()
+    items = CartItem.query.filter_by(user_id=user.id).all()
+    valid_items = [i.to_dict() for i in items if i.product is not None]
+    return jsonify(valid_items)
+
+
+@app.post("/api/cart/sync")
+@jwt_required()
+def sync_cart():
+    user = current_user()
+    data = request.get_json(force=True)
+    items_data = data.get("items", [])
+    
+    active_product_ids = []
+    for item in items_data:
+        prod = item.get("product")
+        if isinstance(prod, dict):
+            pid = int(prod["id"])
+        else:
+            pid = int(item.get("product_id"))
+        qty = float(item.get("qty", 1.0))
+        selected = bool(item.get("selected", True))
+        
+        active_product_ids.append(pid)
+        
+        existing = CartItem.query.filter_by(user_id=user.id, product_id=pid).first()
+        if existing:
+            existing.qty = qty
+            existing.selected = selected
+        else:
+            cart_item = CartItem(
+                user_id=user.id,
+                product_id=pid,
+                qty=qty,
+                selected=selected
+            )
+            db.session.add(cart_item)
+            
+    # Delete cart items that are not in the payload
+    CartItem.query.filter(
+        CartItem.user_id == user.id,
+        ~CartItem.product_id.in_(active_product_ids)
+    ).delete(synchronize_session=False)
+    
+    db.session.commit()
+    return jsonify({"status": "success"})
+
+
+# ---------------------------------------------------------------------------
+# AI Chat Sessions Endpoints
+# ---------------------------------------------------------------------------
+@app.get("/api/ai/chat/sessions")
+@jwt_required()
+def get_ai_sessions():
+    user = current_user()
+    sessions = AIChatSession.query.filter_by(user_id=user.id).order_by(AIChatSession.updated_at.desc()).all()
+    return jsonify([s.to_dict() for s in sessions])
+
+
+@app.post("/api/ai/chat/sessions")
+@jwt_required()
+def sync_ai_sessions():
+    user = current_user()
+    data = request.get_json(force=True)
+    sessions_data = data.get("sessions", [])
+    
+    active_ids = []
+    for s in sessions_data:
+        sid = str(s["id"])
+        active_ids.append(sid)
+        
+        existing = AIChatSession.query.filter_by(user_id=user.id, id=sid).first()
+        import json
+        title = s.get("title", "Sesi Baru")
+        messages = json.dumps(s.get("messages", []))
+        
+        if existing:
+            existing.title = title
+            existing.messages = messages
+        else:
+            session = AIChatSession(
+                id=sid,
+                user_id=user.id,
+                title=title,
+                messages=messages
+            )
+            db.session.add(session)
+            
+    # Delete sessions not in payload
+    AIChatSession.query.filter(
+        AIChatSession.user_id == user.id,
+        ~AIChatSession.id.in_(active_ids)
+    ).delete(synchronize_session=False)
+    
+    db.session.commit()
+    return jsonify({"status": "success"})
 
 
 # ---------------------------------------------------------------------------

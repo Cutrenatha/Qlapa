@@ -3,37 +3,125 @@ import { Link } from "react-router-dom";
 import api from "../api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
+import { User, Store, Shield, Image as ImageIcon, CheckCircle, Camera } from "lucide-react";
+import "./Profile.css";
 
 export default function Profile() {
   const { user, refreshUser } = useAuth();
+  const [activeTab, setActiveTab] = useState("general");
+
+  return (
+    <div className="profile-page">
+      <div className="profile-header">
+        <h1 className="profile-title">Pengaturan Akun</h1>
+        <p className="profile-subtitle">Kelola profil, pengaturan toko, dan keamanan akun Anda.</p>
+      </div>
+
+      <div className="profile-layout">
+        {/* Sidebar Nav */}
+        <aside className="profile-sidebar">
+          <nav className="profile-nav">
+            <button
+              className={`profile-nav-item ${activeTab === "general" ? "active" : ""}`}
+              onClick={() => setActiveTab("general")}
+            >
+              <User size={18} />
+              Profil Umum
+            </button>
+            {user.is_seller && (
+              <button
+                className={`profile-nav-item ${activeTab === "store" ? "active" : ""}`}
+                onClick={() => setActiveTab("store")}
+              >
+                <Store size={18} />
+                Informasi Toko
+              </button>
+            )}
+            <button
+              className={`profile-nav-item ${activeTab === "security" ? "active" : ""}`}
+              onClick={() => setActiveTab("security")}
+            >
+              <Shield size={18} />
+              Keamanan
+            </button>
+          </nav>
+          
+          {!user.is_seller && (
+            <div className="profile-promo-card">
+              <Store size={24} className="profile-promo-icon" />
+              <strong>Belum punya toko?</strong>
+              <p>Mulai jual limbah kelapa Anda sendiri di Qlapa sekarang juga.</p>
+              <Link to="/toko/buka" className="btn btn-primary btn-sm profile-promo-btn">
+                Buka Toko
+              </Link>
+            </div>
+          )}
+        </aside>
+
+        {/* Content Area */}
+        <div className="profile-content">
+          {activeTab === "general" && <GeneralSettings user={user} refreshUser={refreshUser} />}
+          {activeTab === "store" && user.is_seller && <StoreSettings user={user} refreshUser={refreshUser} />}
+          {activeTab === "security" && <SecuritySettings />}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* General Settings                                                   */
+/* ------------------------------------------------------------------ */
+function GeneralSettings({ user, refreshUser }) {
   const { showToast } = useToast();
+  const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     name: user.name,
     phone: user.phone || "",
-    store_name: user.store_name || "",
-    store_location: user.store_location || "",
-    store_description: user.store_description || "",
+    address: user.address || "",
   });
-  const [saving, setSaving] = useState(false);
+  
+  const [suggestions, setSuggestions] = useState([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const [typingTimeout, setTypingTimeout] = useState(null);
+
+  const handleAddressChange = (val) => {
+    setForm((prev) => ({ ...prev, address: val }));
+    if (typingTimeout) clearTimeout(typingTimeout);
+    if (val.trim().length < 4) {
+      setSuggestions([]);
+      return;
+    }
+    setLoadingSuggestions(true);
+    setTypingTimeout(
+      setTimeout(async () => {
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(val)}&countrycodes=id&limit=5`);
+          if (res.ok) {
+            const data = await res.json();
+            setSuggestions(data);
+          }
+        } catch (err) {
+          console.error("OSM autocomplete error:", err);
+        } finally {
+          setLoadingSuggestions(false);
+        }
+      }, 500)
+    );
+  };
+
+  const selectSuggestion = (item) => {
+    setForm((prev) => ({ ...prev, address: item.display_name }));
+    setSuggestions([]);
+  };
 
   const submit = async (e) => {
     e.preventDefault();
     setSaving(true);
     try {
-      const data = {
-        name: form.name,
-        phone: form.phone,
-      };
-
-      if (user.is_seller) {
-        data.store_name = form.store_name;
-        data.store_location = form.store_location;
-        data.store_description = form.store_description;
-      }
-
-      await api.put("/auth/me", data);
+      await api.put("/auth/me", form);
       await refreshUser();
-      showToast("Profil berhasil diperbarui");
+      showToast("Profil umum berhasil diperbarui");
     } catch (err) {
       console.error(err);
       showToast("Gagal memperbarui profil", "error");
@@ -43,289 +131,148 @@ export default function Profile() {
   };
 
   return (
-    <div className="section container" style={{ maxWidth: 560 }}>
-      <h1 style={{ fontSize: "1.8rem", marginBottom: 6 }}>Profil Saya</h1>
-      <div
-        className="row gap-8"
-        style={{ marginBottom: 24, alignItems: "center" }}
-      >
-        <span>{user.email}</span>
-        <span className="badge">Pembeli</span>
-        {user.is_seller && <span className="badge badge-brown">Penjual</span>}
+    <div className="profile-panel">
+      <div className="profile-panel-header">
+        <h2 className="profile-panel-title">Profil Umum</h2>
+        <p className="profile-panel-desc">Info dasar tentang akun Anda yang digunakan di seluruh Qlapa.</p>
       </div>
 
-      <AvatarUploader />
-
-      {!user.is_seller && (
-        <div
-          className="card"
-          style={{
-            padding: 20,
-            marginBottom: 20,
-            background: "var(--brown-100)",
-            border: "1px solid var(--brown-300)",
-          }}
-        >
-          <strong style={{ display: "block", marginBottom: 6 }}>
-            Belum punya toko?
-          </strong>
-          <p style={{ marginBottom: 12 }}>
-            Buka toko dengan akun yang sama ini — tidak perlu daftar akun baru —
-            dan mulai jual limbah kelapa kamu sendiri.
-          </p>
-          <Link to="/toko/buka" className="btn btn-primary btn-sm">
-            + Buka Toko
-          </Link>
-        </div>
-      )}
-
-      <form onSubmit={submit} className="card" style={{ padding: 24, marginBottom: 20 }}>
-        <div className="field">
-          <label>Nama</label>
-          <input
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-          />
+      <div className="profile-panel-body">
+        <div className="profile-avatar-section">
+          <AvatarUploader endpoint="/auth/me/avatar" label="Foto Profil" currentPhoto={user.avatar_url} defaultIcon={<User size={32} />} />
+          <div className="profile-user-badge">
+            <span className="profile-email">{user.email}</span>
+            <span className="badge">Pembeli</span>
+            {user.is_seller && <span className="badge badge-brown">Penjual</span>}
+          </div>
         </div>
 
-        <div className="field">
-          <label>No. Telepon</label>
-          <input
-            value={form.phone}
-            onChange={(e) => setForm({ ...form, phone: e.target.value })}
-          />
-        </div>
-
-        {user.is_seller && (
-          <>
-            <div className="field">
-              <label>Nama Toko</label>
-              <input
-                value={form.store_name}
-                onChange={(e) =>
-                  setForm({ ...form, store_name: e.target.value })
-                }
-              />
+        <form onSubmit={submit} className="profile-form">
+          <div className="profile-form-row">
+            <div className="profile-field">
+              <label>Nama Lengkap</label>
+              <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Nama lengkap kamu" />
             </div>
-
-            <div className="field">
-              <label>Lokasi Toko</label>
-              <input
-                value={form.store_location}
-                onChange={(e) =>
-                  setForm({ ...form, store_location: e.target.value })
-                }
-              />
+            <div className="profile-field">
+              <label>No. Telepon</label>
+              <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="Nomor HP aktif" />
             </div>
+          </div>
 
-            <div className="field">
-              <label>Deskripsi Usaha</label>
-              <textarea
-                value={form.store_description}
-                onChange={(e) =>
-                  setForm({ ...form, store_description: e.target.value })
-                }
-              />
-            </div>
-          </>
-        )}
+          <div className="profile-field profile-address-field">
+            <label>Alamat Utama (untuk Pengiriman)</label>
+            <textarea
+              value={form.address}
+              onChange={(e) => handleAddressChange(e.target.value)}
+              placeholder="Ketik nama jalan, RT/RW, kelurahan/desa, kecamatan, kota/kabupaten..."
+            />
+            {loadingSuggestions && <div className="profile-address-loading">Mencari lokasi...</div>}
+            {suggestions.length > 0 && (
+              <ul className="profile-address-suggestions">
+                {suggestions.map((item, idx) => (
+                  <li key={idx} onClick={() => selectSuggestion(item)}>📍 {item.display_name}</li>
+                ))}
+              </ul>
+            )}
+          </div>
 
-        <button
-          className="btn btn-primary btn-block"
-          type="submit"
-          disabled={saving}
-        >
-          {saving ? "Menyimpan…" : "Simpan Perubahan"}
-        </button>
-      </form>
-
-      {user.is_seller && <StorePhotoUploader />}
-
-      <ChangePasswordForm />
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* Foto profil akun                                                    */
-/* ------------------------------------------------------------------ */
-function AvatarUploader() {
-  const { user, refreshUser } = useAuth();
-  const { showToast } = useToast();
-  const fileInputRef = useRef(null);
-  const [uploading, setUploading] = useState(false);
-  const [preview, setPreview] = useState("");
-
-  const pickFile = async (file) => {
-    if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      showToast("File harus berupa gambar (JPG, PNG, WEBP)", "error");
-      return;
-    }
-    if (file.size > 8 * 1024 * 1024) {
-      showToast("Ukuran gambar maksimal 8MB", "error");
-      return;
-    }
-    setPreview(URL.createObjectURL(file));
-    setUploading(true);
-    try {
-      const fd = new FormData();
-      fd.append("image", file);
-      await api.post("/auth/me/avatar", fd, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      await refreshUser();
-      showToast("Foto profil berhasil diperbarui");
-    } catch (err) {
-      console.error(err);
-      showToast("Gagal mengunggah foto profil", "error");
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const photo = preview || user.avatar_url;
-
-  return (
-    <div
-      className="card"
-      style={{
-        padding: 20,
-        marginBottom: 20,
-        display: "flex",
-        alignItems: "center",
-        gap: 16,
-      }}
-    >
-      <div style={styles.avatarWrap}>
-        {photo ? (
-          <img src={photo} alt="Foto profil" style={styles.avatarImg} />
-        ) : (
-          <span style={{ fontSize: "1.6rem" }}>👤</span>
-        )}
-      </div>
-      <div style={{ flex: 1 }}>
-        <strong style={{ display: "block", marginBottom: 4 }}>
-          Foto Profil
-        </strong>
-        <p style={{ fontSize: "0.82rem", marginBottom: 10 }}>
-          JPG, PNG, atau WEBP. Maksimal 8MB.
-        </p>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          style={{ display: "none" }}
-          onChange={(e) => pickFile(e.target.files?.[0])}
-        />
-        <button
-          type="button"
-          className="btn btn-outline btn-sm"
-          disabled={uploading}
-          onClick={() => fileInputRef.current?.click()}
-        >
-          {uploading ? "Mengunggah…" : "Ganti Foto"}
-        </button>
+          <div className="profile-form-actions">
+            <button type="submit" className="btn btn-primary" disabled={saving}>
+              {saving ? "Menyimpan..." : (
+                <>
+                  <CheckCircle size={18} style={{ marginRight: 8 }} /> Simpan Perubahan
+                </>
+              )}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );
 }
 
 /* ------------------------------------------------------------------ */
-/* Foto profil toko (khusus penjual)                                   */
+/* Store Settings                                                     */
 /* ------------------------------------------------------------------ */
-function StorePhotoUploader() {
-  const { user, refreshUser } = useAuth();
+function StoreSettings({ user, refreshUser }) {
   const { showToast } = useToast();
-  const fileInputRef = useRef(null);
-  const [uploading, setUploading] = useState(false);
-  const [preview, setPreview] = useState("");
-
-  const pickFile = async (file) => {
-    if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      showToast("File harus berupa gambar (JPG, PNG, WEBP)", "error");
-      return;
-    }
-    if (file.size > 8 * 1024 * 1024) {
-      showToast("Ukuran gambar maksimal 8MB", "error");
-      return;
-    }
-    setPreview(URL.createObjectURL(file));
-    setUploading(true);
-    try {
-      const fd = new FormData();
-      fd.append("image", file);
-      await api.post("/store/photo", fd, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      await refreshUser();
-      showToast("Foto toko berhasil diperbarui");
-    } catch (err) {
-      console.error(err);
-      showToast("Gagal mengunggah foto toko", "error");
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const photo = preview || user.store_image_url;
-
-  return (
-    <div
-      className="card"
-      style={{
-        padding: 20,
-        marginBottom: 20,
-        display: "flex",
-        alignItems: "center",
-        gap: 16,
-      }}
-    >
-      <div style={styles.avatarWrap}>
-        {photo ? (
-          <img src={photo} alt="Foto toko" style={styles.avatarImg} />
-        ) : (
-          <span style={{ fontSize: "1.6rem" }}>🥥</span>
-        )}
-      </div>
-      <div style={{ flex: 1 }}>
-        <strong style={{ display: "block", marginBottom: 4 }}>
-          Foto Profil Toko
-        </strong>
-        <p style={{ fontSize: "0.82rem", marginBottom: 10 }}>
-          Ditampilkan sebagai logo toko {user.store_name || "kamu"}.
-        </p>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          style={{ display: "none" }}
-          onChange={(e) => pickFile(e.target.files?.[0])}
-        />
-        <button
-          type="button"
-          className="btn btn-outline btn-sm"
-          disabled={uploading}
-          onClick={() => fileInputRef.current?.click()}
-        >
-          {uploading ? "Mengunggah…" : "Ganti Foto Toko"}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* Ganti password                                                       */
-/* ------------------------------------------------------------------ */
-function ChangePasswordForm() {
-  const { showToast } = useToast();
+  const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
-    current_password: "",
-    new_password: "",
-    confirm_password: "",
+    store_name: user.store_name || "",
+    store_location: user.store_location || "",
+    store_description: user.store_description || "",
   });
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await api.put("/auth/me", form);
+      await refreshUser();
+      showToast("Informasi toko berhasil diperbarui");
+    } catch (err) {
+      console.error(err);
+      showToast("Gagal memperbarui toko", "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="profile-panel">
+      <div className="profile-panel-header">
+        <h2 className="profile-panel-title">Informasi Toko</h2>
+        <p className="profile-panel-desc">Kelola profil publik toko Anda di Qlapa Hub.</p>
+      </div>
+
+      <div className="profile-panel-body">
+        <div className="profile-avatar-section">
+          <AvatarUploader endpoint="/store/photo" label="Logo Toko" currentPhoto={user.store_image_url} defaultIcon={<Store size={32} />} />
+        </div>
+
+        <form onSubmit={submit} className="profile-form">
+          <div className="profile-form-row">
+            <div className="profile-field">
+              <label>Nama Toko</label>
+              <input value={form.store_name} onChange={(e) => setForm({ ...form, store_name: e.target.value })} placeholder="Nama toko kelapa Anda" />
+            </div>
+            <div className="profile-field">
+              <label>Lokasi Toko</label>
+              <input value={form.store_location} onChange={(e) => setForm({ ...form, store_location: e.target.value })} placeholder="Kota atau kabupaten" />
+            </div>
+          </div>
+
+          <div className="profile-field">
+            <label>Deskripsi Usaha</label>
+            <textarea
+              value={form.store_description}
+              onChange={(e) => setForm({ ...form, store_description: e.target.value })}
+              placeholder="Jelaskan mengenai jenis limbah kelapa yang Anda sediakan..."
+              style={{ minHeight: 120 }}
+            />
+          </div>
+
+          <div className="profile-form-actions">
+            <button type="submit" className="btn btn-primary" disabled={saving}>
+              {saving ? "Menyimpan..." : (
+                <>
+                  <CheckCircle size={18} style={{ marginRight: 8 }} /> Simpan Info Toko
+                </>
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Security Settings                                                  */
+/* ------------------------------------------------------------------ */
+function SecuritySettings() {
+  const { showToast } = useToast();
+  const [form, setForm] = useState({ current_password: "", new_password: "", confirm_password: "" });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -344,10 +291,7 @@ function ChangePasswordForm() {
 
     setSaving(true);
     try {
-      await api.put("/auth/me/password", {
-        current_password: form.current_password,
-        new_password: form.new_password,
-      });
+      await api.put("/auth/me/password", { current_password: form.current_password, new_password: form.new_password });
       showToast("Password berhasil diubah");
       setForm({ current_password: "", new_password: "", confirm_password: "" });
     } catch (err) {
@@ -358,75 +302,88 @@ function ChangePasswordForm() {
   };
 
   return (
-    <form onSubmit={submit} className="card" style={{ padding: 24 }}>
-      <h2 style={{ fontSize: "1.1rem", marginBottom: 4 }}>Ganti Password</h2>
-      <p style={{ fontSize: "0.85rem", marginBottom: 16 }}>
-        Gunakan password baru yang kuat dan tidak dipakai di tempat lain.
-      </p>
-
-      <div className="field">
-        <label>Password Saat Ini</label>
-        <input
-          type="password"
-          required
-          value={form.current_password}
-          onChange={(e) =>
-            setForm({ ...form, current_password: e.target.value })
-          }
-        />
+    <div className="profile-panel">
+      <div className="profile-panel-header">
+        <h2 className="profile-panel-title">Keamanan Akun</h2>
+        <p className="profile-panel-desc">Ganti password dan lindungi akun Anda.</p>
       </div>
 
-      <div className="field">
-        <label>Password Baru</label>
-        <input
-          type="password"
-          required
-          value={form.new_password}
-          onChange={(e) => setForm({ ...form, new_password: e.target.value })}
-        />
+      <div className="profile-panel-body">
+        <form onSubmit={submit} className="profile-form">
+          <div className="profile-field">
+            <label>Password Saat Ini</label>
+            <input type="password" required value={form.current_password} onChange={(e) => setForm({ ...form, current_password: e.target.value })} />
+          </div>
+          <div className="profile-field">
+            <label>Password Baru</label>
+            <input type="password" required value={form.new_password} onChange={(e) => setForm({ ...form, new_password: e.target.value })} />
+          </div>
+          <div className="profile-field">
+            <label>Konfirmasi Password Baru</label>
+            <input type="password" required value={form.confirm_password} onChange={(e) => setForm({ ...form, confirm_password: e.target.value })} />
+          </div>
+
+          {error && <div className="profile-error-alert"><Shield size={16} /> {error}</div>}
+
+          <div className="profile-form-actions">
+            <button type="submit" className="btn btn-primary" disabled={saving}>
+              {saving ? "Menyimpan..." : "Update Password"}
+            </button>
+          </div>
+        </form>
       </div>
-
-      <div className="field">
-        <label>Konfirmasi Password Baru</label>
-        <input
-          type="password"
-          required
-          value={form.confirm_password}
-          onChange={(e) =>
-            setForm({ ...form, confirm_password: e.target.value })
-          }
-        />
-      </div>
-
-      {error && (
-        <p className="field-error" style={{ marginBottom: 12 }}>
-          {error}
-        </p>
-      )}
-
-      <button
-        className="btn btn-primary btn-block"
-        type="submit"
-        disabled={saving}
-      >
-        {saving ? "Menyimpan…" : "Ubah Password"}
-      </button>
-    </form>
+    </div>
   );
 }
 
-const styles = {
-  avatarWrap: {
-    width: 64,
-    height: 64,
-    borderRadius: "50%",
-    background: "var(--cream-2)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-    flexShrink: 0,
-    border: "1px solid var(--line)",
-  },
-  avatarImg: { width: "100%", height: "100%", objectFit: "cover" },
-};
+/* ------------------------------------------------------------------ */
+/* Shared Avatar Uploader Component                                   */
+/* ------------------------------------------------------------------ */
+function AvatarUploader({ endpoint, label, currentPhoto, defaultIcon }) {
+  const { refreshUser } = useAuth();
+  const { showToast } = useToast();
+  const fileInputRef = useRef(null);
+  const [uploading, setUploading] = useState(false);
+  const [preview, setPreview] = useState("");
+
+  const pickFile = async (file) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) return showToast("File harus berupa gambar (JPG, PNG)", "error");
+    if (file.size > 8 * 1024 * 1024) return showToast("Ukuran maksimal 8MB", "error");
+    
+    setPreview(URL.createObjectURL(file));
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("image", file);
+      await api.post(endpoint, fd, { headers: { "Content-Type": "multipart/form-data" } });
+      await refreshUser();
+      setPreview("");
+      showToast(`${label} berhasil diperbarui`);
+    } catch (err) {
+      console.error(err);
+      showToast(`Gagal mengunggah ${label.toLowerCase()}`, "error");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const photo = preview || currentPhoto;
+
+  return (
+    <div className="profile-avatar-uploader">
+      <div className="profile-avatar-circle">
+        {photo ? <img src={photo} alt={label} /> : <div className="profile-avatar-placeholder">{defaultIcon}</div>}
+        <button className="profile-avatar-edit-btn" onClick={() => fileInputRef.current?.click()} type="button" title="Ganti foto">
+          <Camera size={14} />
+        </button>
+      </div>
+      <div className="profile-avatar-info">
+        <strong>{label}</strong>
+        <span>JPG, PNG, atau WEBP. Maks 8MB.</span>
+        <input ref={fileInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => pickFile(e.target.files?.[0])} />
+        {uploading && <span className="profile-uploading-text">Mengunggah...</span>}
+      </div>
+    </div>
+  );
+}
