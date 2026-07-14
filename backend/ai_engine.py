@@ -1115,7 +1115,7 @@ def _generate_local_fallback(intent: str, types: list[str], products: list[dict]
     return "\n\n".join(reply_parts)
 
 
-def chat_with_ai(message: str) -> str:
+def chat_with_ai(message: str, category: str = None) -> str:
     """Chatbot Qlapa AI untuk pembeli menggunakan pipeline intent detection -> DB -> LLM."""
     
     intent = detect_intent(message)
