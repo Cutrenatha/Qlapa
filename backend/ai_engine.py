@@ -52,12 +52,22 @@ GEMINI_API_KEY = (
 )
 
 # Daftar model dicoba berurutan (fallback berjenjang) kalau model pertama
-# kena rate-limit/quota (429). Bisa dioverride lewat .env:
-#   GEMINI_MODEL_ID=gemini-2.0-flash,gemini-2.5-flash,gemini-1.5-flash
+# kena rate-limit/quota (429) atau tidak tersedia (404). Bisa dioverride
+# lewat .env:
+#   GEMINI_MODEL_ID=gemini-3.5-flash,gemini-3.1-flash-lite
+#
+# PENTING (per Juli 2026):
+# - gemini-2.0-flash & gemini-1.5-flash: SUDAH DI-DEPRECATE Google (pensiun
+#   awal 2026), kuota free tier-nya 0 -> selalu gagal 429 RESOURCE_EXHAUSTED.
+# - gemini-2.5-flash: sekarang HANYA bisa dipakai akun yang sudah pernah
+#   memakainya sebelumnya. API key BARU akan selalu dapat 404 NOT_FOUND
+#   dengan pesan "no longer available to new users".
+# Kalau di .env kamu masih ada GEMINI_MODEL_ID yang menyebut model-model di
+# atas, HAPUS/GANTI baris tersebut supaya default di bawah ini yang dipakai.
 GEMINI_MODEL_CANDIDATES = [
     m.strip() for m in os.environ.get(
         "GEMINI_MODEL_ID",
-        "gemini-2.0-flash,gemini-1.5-flash"
+        "gemini-3.5-flash,gemini-3.1-flash-lite"
     ).split(",") if m.strip()
 ]
 # Dipakai di beberapa tempat lain (mis. log) sebagai model utama/default
@@ -429,18 +439,45 @@ def _ai_analyze_image(image_path: str) -> dict:
     valid_conditions = ", ".join(CONDITION_HINTS.keys())
 
     category_visual_guide = (
-        "Panduan ciri visual tiap jenis (gunakan ini untuk membedakan, JANGAN asal tebak):\n"
-        "- Tempurung: bagian KERAS berwarna coklat tua/gelap sampai hampir hitam, permukaan keras "
-        "mengkilap atau berserabut tipis di luar, bentuk melengkung seperti mangkuk/batok, "
-        "TIDAK berserat panjang.\n"
-        "- Sabut: serat-serat PANJANG dan kasar berwarna coklat muda-kecoklatan, terlihat seperti "
-        "anyaman/gumpalan serat (mirip tali rami), tekstur berbulu/berserabut jelas, empuk saat ditekan.\n"
-        "- Ampas: sisa parutan/perasan daging kelapa, berwarna putih-krem hingga kecoklatan, "
-        "bertekstur seperti serbuk/butiran basah, bukan bentuk padat besar.\n"
-        "- Daun: helai daun kelapa (janur/daun tua), bentuk memanjang pipih hijau atau coklat kering.\n"
+        "Panduan ciri visual tiap jenis (gunakan ini untuk membedakan, JANGAN asal tebak):\n\n"
+        "KATEGORI 1 - BAHAN BAKU (limbah kelapa murni, belum diolah):\n"
+        "- Tempurung (Batok Kelapa): bagian KERAS berwarna coklat tua/gelap sampai hampir hitam, "
+        "permukaan keras mengkilap atau berserabut tipis di luar, bentuk melengkung seperti "
+        "mangkuk/batok, TIDAK berserat panjang.\n"
+        "- Sabut (Serabut Kelapa): serat-serat PANJANG dan kasar berwarna coklat muda-kecoklatan, "
+        "terlihat seperti anyaman/gumpalan serat (mirip tali rami), tekstur berbulu/berserabut "
+        "jelas, empuk saat ditekan, BELUM diolah/dipotong rapi.\n"
+        "- Ampas (Sisa Parutan Kelapa): sisa parutan/perasan daging kelapa, berwarna putih-krem "
+        "hingga kecoklatan, bertekstur seperti serbuk/butiran basah, bukan bentuk padat besar.\n"
+        "- Daun (Janur/Daun Kelapa Tua): helai daun kelapa, bentuk memanjang pipih hijau (janur) "
+        "atau coklat kering (daun tua).\n"
         "- Air Kelapa: cairan bening/putih keruh di dalam wadah atau kelapa yang dibelah.\n\n"
+        "KATEGORI 2 - PRODUK OLAHAN (sudah diproses, bernilai tambah, BUKAN limbah mentah):\n"
+        "- Briket: gumpalan/batangan arang PADAT hasil kompresi dari tempurung, bentuk rapi "
+        "(silinder/kotak/heksagonal), warna hitam pekat merata, permukaan halus dan kering, "
+        "sering dikemas dalam plastik/kardus.\n"
+        "- Cocopeat: serbuk HALUS coklat menyerupai tanah/gambut, tekstur lembut seperti bubuk "
+        "kopi kasar, biasanya dikemas dalam blok padat atau kantong, dipakai sebagai media tanam.\n"
+        "- Cocofiber: serat sabut yang sudah DIBERSIHKAN dan dipisahkan dari cocopeat, terlihat "
+        "rapi menggumpal seperti gulungan serat/wol coklat, lebih bersih dan seragam dibanding "
+        "sabut mentah.\n"
+        "- Arang Aktif: bubuk atau butiran karbon HITAM PEKAT dari tempurung, permukaan sangat "
+        "matte/tidak mengkilap, sering dikemas dalam kantong/toples untuk filter.\n"
+        "- Kerajinan: barang jadi berbentuk mangkuk, sendok, atau hiasan dari tempurung yang sudah "
+        "dihaluskan/dipoles, permukaan halus mengkilap, bentuk fungsional/dekoratif yang jelas.\n"
+        "- Pot Sabut: pot tanaman berbentuk wadah/pot dari anyaman sabut yang sudah dibentuk padat, "
+        "punya rongga/cekungan untuk media tanam.\n"
+        "- Keset Sabut: lembaran datar dari serat sabut yang dianyam/dipress rapi berbentuk keset "
+        "kaki persegi/oval.\n"
+        "- Tali Sabut: sabut yang sudah dipilin memanjang menjadi bentuk TALI/tambang.\n"
+        "- Pupuk Organik: kompos berwarna coklat gelap gembur seperti tanah, dari fermentasi "
+        "ampas/daun kelapa, sering dalam kemasan karung/kantong pupuk.\n"
+        "- Pakan Ternak: butiran/serbuk pakan dari hasil olahan ampas kelapa, biasa dikemas dalam "
+        "karung pakan ternak.\n\n"
         "Jika foto menunjukkan KELAPA UTUH (masih ada tempurung + sabut menyatu, belum dipisah), "
-        "pilih jenis berdasarkan bagian yang PALING DOMINAN terlihat pada foto."
+        "pilih jenis berdasarkan bagian yang PALING DOMINAN terlihat pada foto. "
+        "Jika bahan terlihat SUDAH DIPROSES/dibentuk rapi (dikompres, dianyam, dihaluskan, "
+        "dikemas), pilih dari KATEGORI 2, bukan bahan mentahnya."
     )
 
     prompt = (
@@ -686,39 +723,102 @@ def _extract_image_features(img: Image.Image) -> dict:
     }
 
 
-def _classify_category_improved(features: dict) -> str:
-    """Enhanced category classification with multiple heuristics."""
+def _classify_category_improved(features: dict, filepath: str = "") -> str:
+    """Enhanced category classification with file name keyword matching and a
+    per-category scoring heuristic (bukan cascading if/elif).
+
+    CATATAN PENTING: fungsi ini hanya dipakai sebagai FALLBACK saat Gemini
+    Vision (_ai_analyze_image) tidak tersedia/gagal (mis. GEMINI_API_KEY belum
+    diset, kena rate limit, atau error jaringan). Versi lama memakai
+    if/elif berurutan dengan syarat "Sabut" yang terlalu longgar
+    (r > b+15 and g > b+5 and edge_intensity > 25) sehingga HAMPIR SEMUA foto
+    (apapun objeknya) kebajol ke cabang itu duluan, dan fallback paling akhir
+    pun juga "Sabut" -> akibatnya semua gambar selalu diklasifikasi sebagai
+    Sabut. Sekarang tiap kategori dihitung skornya dari fitur visual lalu
+    yang skornya tertinggi yang dipilih, jadi tidak ada bias ke satu kategori.
+    """
+    if filepath:
+        filename = os.path.basename(filepath).lower()
+        keyword_groups = [
+            (["tempurung", "batok", "shell", "arang", "briket"], "Tempurung"),
+            (["daun", "janur", "leaf"], "Daun"),
+            (["ampas", "tepung", "pakan", "pupuk"], "Ampas"),
+            (["air", "liquid", "water", "nata"], "Air Kelapa"),
+            (["sabut", "fiber", "peat", "coir", "keset", "tali", "pot"], "Sabut"),
+        ]
+        for keywords, cat in keyword_groups:
+            if any(kw in filename for kw in keywords):
+                return cat
+
     r, g, b = features["r"], features["g"], features["b"]
     brightness = features["brightness"]
     edge_intensity = features["edge_intensity"]
-    r_norm, g_norm, b_norm = features["r_norm"], features["g_norm"], features["b_norm"]
-    
-    # Tempurung: sangat gelap, padat, sedikit tekstur (keras)
-    if brightness < 100 and edge_intensity < 15:
-        return "Tempurung"
-    
-    # Daun: hijau atau kuning-hijau, tepi tajam (serat daun)
-    if g > r + 25 and g > b + 25 and g_norm > 1.1:
-        return "Daun"
-    if brightness > 130 and g > r + 15 and edge_intensity > 20:
-        return "Daun"
-    
-    # Ampas: putih/krem, sangat uniform warna, sedikit tekstur
-    if brightness > 170 and features["color_variance"] < 25:
-        return "Ampas"
-    
-    # Sabut: cokelat/merah, serat terlihat (tekstur tinggi)
-    if r > b + 15 and g > b + 5 and edge_intensity > 25:
+    color_variance = features["color_variance"]
+    g_norm = features["g_norm"]
+    saturation = max(r, g, b) - min(r, g, b)  # proxy sederhana untuk saturasi warna
+
+    # Sinyal warna (hue) jauh lebih stabil terhadap noise kamera/kompresi JPEG
+    # dibanding edge_intensity, jadi warna diberi bobot dominan dan edge hanya
+    # sebagai penambah kecil (tie-breaker), bukan penentu utama.
+    scores = {"Tempurung": 0.0, "Daun": 0.0, "Ampas": 0.0, "Sabut": 0.0, "Air Kelapa": 0.0}
+
+    # Tempurung: sangat gelap adalah penanda paling kuat & paling tahan noise
+    # warna, jadi brightness rendah mendominasi skor terlepas dari sedikit
+    # kemiripan hue coklat dengan Sabut.
+    if brightness < 60:
+        scores["Tempurung"] += 6
+    elif brightness < 80:
+        scores["Tempurung"] += 4.5
+    elif brightness < 105:
+        scores["Tempurung"] += 2
+    if saturation < 35 and brightness < 125:
+        scores["Tempurung"] += 1
+
+    # Daun: dominan hijau (hue hijau adalah penanda paling kuat & tahan noise)
+    if g > r and g > b:
+        scores["Daun"] += 3 + min((g - r) / 15, 2.5) + min((g - b) / 15, 2.5)
+    elif g_norm > 1.0:
+        scores["Daun"] += 0.5
+
+    # Ampas: sangat terang adalah penanda paling kuat (putih/krem), mendominasi
+    # skor terlepas dari sedikit pergeseran hue akibat white balance kamera.
+    if brightness > 190:
+        scores["Ampas"] += 5
+    elif brightness > 160:
+        scores["Ampas"] += 3.5
+    elif brightness > 140:
+        scores["Ampas"] += 1.5
+    if saturation < 30 and brightness > 140:
+        scores["Ampas"] += 1
+
+    # Sabut: coklat kemerahan/berserat (r > g > b) pada brightness menengah.
+    # Hue coklat hanya kuat sebagai penanda Sabut jika brightness berada di
+    # rentang menengah (bukan sangat gelap/sangat terang, itu ranah
+    # Tempurung/Ampas) supaya tidak "mencuri" foto tempurung/ampas yang
+    # kebetulan sedikit kemerahan akibat white balance kamera.
+    if 80 <= brightness <= 165 and r > g >= b and (r - b) > 15:
+        scores["Sabut"] += 2 + min((r - b) / 20, 2)
+    elif r >= b and (r - b) > 8 and 100 <= brightness <= 160:
+        scores["Sabut"] += 0.8
+    if edge_intensity > 30 and 80 <= brightness <= 165:
+        scores["Sabut"] += 0.5  # serat terlihat -> penambah kecil, bukan penentu utama
+
+    # Air Kelapa: sangat terang/bening dan nyaris tanpa tekstur (permukaan cair/mengkilap)
+    if brightness > 200 and saturation < 20:
+        scores["Air Kelapa"] += 2
+    if edge_intensity < 10 and brightness > 180:
+        scores["Air Kelapa"] += 1.5
+
+    best_category = max(scores, key=scores.get)
+    if scores[best_category] <= 0:
+        # Tidak ada fitur yang menonjol sama sekali - pakai brightness kasar
+        # sebagai penentu terakhir, bukan selalu "Sabut".
+        if brightness < 100:
+            return "Tempurung"
+        if brightness > 165:
+            return "Ampas"
         return "Sabut"
-    if 120 < brightness < 160 and r > g and r > b:
-        return "Sabut"
-    
-    # Air Kelapa: transparan/bening (terang tapi dengan variasi)
-    if brightness > 180 and features["color_variance"] > 30 and edge_intensity < 10:
-        return "Air Kelapa"
-    
-    # Default fallback
-    return "Sabut"
+    return best_category
 
 
 def _classify_condition_improved(features: dict) -> str:
@@ -744,7 +844,7 @@ def _analyze_product_image_fallback(filepath: str) -> dict:
     img.thumbnail((300, 300))
 
     features = _extract_image_features(img)
-    category = _classify_category_improved(features)
+    category = _classify_category_improved(features, filepath)
     condition = _classify_condition_improved(features)
 
     color_uniformity = features["color_uniformity"]
@@ -763,9 +863,11 @@ def _analyze_product_image_fallback(filepath: str) -> dict:
     price_estimate = PRICE_FALLBACK.get((category, condition), 1500)
 
     name = f"{category} Kelapa {condition}"
+    category_db = get_category_for_type(category)
     suggestions = ai_suggest_product_fields(
         name=name,
-        category=category,
+        category=category_db,
+        type=category,
         condition=condition,
         quality=quality,
         notes="",
@@ -774,6 +876,7 @@ def _analyze_product_image_fallback(filepath: str) -> dict:
     return {
         "name": suggestions["name"],
         "category": suggestions["category"],
+        "type": suggestions["type"],
         "condition": suggestions["condition"],
         "quality": suggestions["quality"],
         "notes": suggestions["notes"],
@@ -789,31 +892,47 @@ def analyze_product_image(filepath: str) -> dict:
     """Menganalisis foto produk limbah kelapa murni menggunakan Gemini Vision.
     Jika Gemini gagal/sibuk, gunakan fallback lokal dengan confidence rendah."""
 
+    if not GEMINI_CLIENT:
+        print(
+            "[Qlapa AI] PERINGATAN: GEMINI_CLIENT tidak aktif (GEMINI_API_KEY/GOOGLE_API_KEY "
+            "tidak terbaca dari .env). Analisis gambar akan memakai fallback heuristik lokal "
+            "yang kurang akurat dibanding Gemini Vision. Set API key untuk hasil terbaik."
+        )
+
     ai_result = _ai_analyze_image(filepath)
 
-    resolved_category = _normalize_category(
-        ai_result.get("category") if ai_result else "",
-        ai_result.get("name") if ai_result else "",
-    )
-    if not ai_result or resolved_category not in DOWNSTREAM_MAP:
+    raw_type = ai_result.get("type") if ai_result else ""
+    raw_name = ai_result.get("name") if ai_result else ""
+
+    resolved_type = ""
+    if raw_type:
+        for key in DOWNSTREAM_MAP.keys():
+            if raw_type.lower() == key.lower():
+                resolved_type = key
+                break
+    if not resolved_type and raw_name:
+        for alias, canonical in CATEGORY_ALIASES.items():
+            if alias.lower() in raw_name.lower():
+                resolved_type = canonical
+                break
+
+    if not ai_result or resolved_type not in DOWNSTREAM_MAP:
         print("[Qlapa AI] Vision gagal/ambigu, memakai fallback analisis gambar lokal.")
         return _analyze_product_image_fallback(filepath)
 
-    category = resolved_category
+    category = get_category_for_type(resolved_type)
     condition = ai_result.get("condition") if ai_result.get("condition") in CONDITION_HINTS else "Kering"
-    name = ai_result.get("name") or f"{category} Kelapa {condition}"
+    name = ai_result.get("name") or f"{resolved_type} Kelapa {condition}"
     quality = ai_result.get("quality") or "Kualitas baik, siap dikirim"
     description = ai_result.get("description") or _generate_ai_description_fallback(
-        name, category, condition, ""
+        name, resolved_type, condition, ""
     )
     try:
         stock_estimate = int(ai_result.get("stock_estimate_kg"))
     except (TypeError, ValueError):
-        stock_estimate = {"Tempurung": 15, "Sabut": 10, "Ampas": 5, "Daun": 3, "Air Kelapa": 20}.get(category, 5)
+        stock_estimate = {"Tempurung": 15, "Sabut": 10, "Ampas": 5, "Daun": 3, "Air Kelapa": 20}.get(resolved_type, 5)
 
-    # Harga konsisten dari data backend (tabel PRICE_FALLBACK global), tidak lagi
-    # menebak-nebak via AI agar selalu presisi dan konsisten antar produk
-    price_estimate = PRICE_FALLBACK.get((category, condition), 1500)
+    price_estimate = PRICE_FALLBACK.get((resolved_type, condition), 1500)
 
     try:
         confidence = int(ai_result.get("confidence"))
@@ -824,6 +943,7 @@ def analyze_product_image(filepath: str) -> dict:
     return {
         "name": name,
         "category": category,
+        "type": resolved_type,
         "condition": condition,
         "quality": quality,
         "notes": "",

@@ -1519,6 +1519,7 @@ def analyze_product_image_route():
         return jsonify({
             "name": result["name"],
             "category": result.get("category"),
+            "type": result.get("type"),
             "condition": result.get("condition"),
             "quality": result.get("quality"),
             "notes": result.get("notes", ""),
