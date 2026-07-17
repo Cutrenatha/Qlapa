@@ -513,19 +513,30 @@ def delete_product(product_id):
         return jsonify({"error": "Tidak diizinkan"}), 403
 
     try:
-        # Hapus/tata ulang referensi FK sebelum hapus produk agar tidak gagal FK Constraint
+        # 1. Hapus/tata ulang referensi FK yang aman disatukan
         CartItem.query.filter_by(product_id=product_id).delete(synchronize_session=False)
         Review.query.filter_by(product_id=product_id).delete(synchronize_session=False)
         ChatMessage.query.filter_by(product_id=product_id).update({"product_id": None}, synchronize_session=False)
-        OrderItem.query.filter_by(product_id=product_id).update({"product_id": None}, synchronize_session=False)
+        try:
+            OrderItem.query.filter_by(product_id=product_id).update({"product_id": None}, synchronize_session=False)
+        except Exception:
+            db.session.rollback()
 
         db.session.delete(product)
         db.session.commit()
         return jsonify({"message": "Produk berhasil dihapus"})
     except Exception as e:
         db.session.rollback()
-        print(f"[Delete Product Error] {e}")
-        return jsonify({"error": f"Gagal menghapus produk: {str(e)}"}), 500
+        print(f"[Delete Product Hard Delete Failed, Falling Back to Soft Delete] {e}")
+        try:
+            # Fallback jika PostgreSQL di server menolak hard delete karena Foreign Key constraint
+            product.status = "deleted"
+            product.stock = 0
+            db.session.commit()
+            return jsonify({"message": "Produk berhasil dihapus"})
+        except Exception as exc:
+            db.session.rollback()
+            return jsonify({"error": f"Gagal menghapus produk: {str(exc)}"}), 500
 
 
 # ---------------------------------------------------------------------------
@@ -538,7 +549,7 @@ def seller_dashboard():
     if not user.is_seller:
         return jsonify({"error": "Buka toko terlebih dahulu untuk mengakses dashboard"}), 403
 
-    products = Product.query.filter_by(seller_id=user.id).all()
+    products = Product.query.filter(Product.seller_id == user.id, Product.status != "deleted").all()
     orders = Order.query.filter_by(seller_id=user.id).order_by(Order.created_at.desc()).all()
 
     total_pending = len([o for o in orders if o.status == "menunggu_konfirmasi"])
@@ -1113,7 +1124,7 @@ def admin_sellers():
 @app.get("/api/admin/products")
 @admin_required
 def admin_products():
-    products = Product.query.order_by(Product.created_at.desc()).all()
+    products = Product.query.filter(Product.status != "deleted").order_by(Product.created_at.desc()).all()
     return jsonify([p.to_dict() for p in products])
 
 
