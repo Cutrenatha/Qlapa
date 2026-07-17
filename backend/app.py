@@ -509,11 +509,23 @@ def delete_product(product_id):
     product = db.session.get(Product, product_id)
     if not product:
         return jsonify({"error": "Produk tidak ditemukan"}), 404
-    if product.seller_id != user.id:
+    if product.seller_id != user.id and not user.is_admin:
         return jsonify({"error": "Tidak diizinkan"}), 403
-    db.session.delete(product)
-    db.session.commit()
-    return jsonify({"message": "Produk dihapus"})
+
+    try:
+        # Hapus/tata ulang referensi FK sebelum hapus produk agar tidak gagal FK Constraint
+        CartItem.query.filter_by(product_id=product_id).delete(synchronize_session=False)
+        Review.query.filter_by(product_id=product_id).delete(synchronize_session=False)
+        ChatMessage.query.filter_by(product_id=product_id).update({"product_id": None}, synchronize_session=False)
+        OrderItem.query.filter_by(product_id=product_id).update({"product_id": None}, synchronize_session=False)
+
+        db.session.delete(product)
+        db.session.commit()
+        return jsonify({"message": "Produk berhasil dihapus"})
+    except Exception as e:
+        db.session.rollback()
+        print(f"[Delete Product Error] {e}")
+        return jsonify({"error": f"Gagal menghapus produk: {str(e)}"}), 500
 
 
 # ---------------------------------------------------------------------------

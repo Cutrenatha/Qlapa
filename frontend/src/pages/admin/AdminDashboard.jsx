@@ -434,13 +434,29 @@ function PenjualTab() {
 /* ── Produk ── */
 function ProdukTab() {
   const [products, setProducts] = useState(null);
+  const { showToast } = useToast();
 
-  useEffect(() => {
+  const loadProducts = () => {
     adminApi
       .get("/admin/products")
       .then((res) => setProducts(res.data))
       .catch(() => {});
+  };
+
+  useEffect(() => {
+    loadProducts();
   }, []);
+
+  const handleDelete = async (id) => {
+    if (!window.confirm("Hapus produk ini secara permanen sebagai Admin?")) return;
+    try {
+      await api.delete(`/products/${id}`);
+      showToast("Produk berhasil dihapus.");
+      loadProducts();
+    } catch (err) {
+      showToast(err.response?.data?.error || "Gagal menghapus produk.", "error");
+    }
+  };
 
   if (!products) return <Loading />;
 
@@ -452,7 +468,7 @@ function ProdukTab() {
         actions={<ExportButton kind="products" label="Export CSV" />}
       />
       <AdminTable
-        cols={["Produk", "Kategori", "Harga", "Stok", "Penjual", "Status"]}
+        cols={["Produk", "Kategori", "Harga", "Stok", "Penjual", "Status", "Aksi"]}
         emptyMsg="Belum ada produk."
         rows={products.map((p) => [
           <AvatarCell src={p.image_url} name={p.name} />,
@@ -467,6 +483,22 @@ function ProdukTab() {
           >
             {p.status === "active" ? "Aktif" : "Nonaktif"}
           </span>,
+          <button
+            key={p.id}
+            onClick={() => handleDelete(p.id)}
+            style={{
+              background: "#FEE2E2",
+              color: "#DC2626",
+              border: "none",
+              borderRadius: 6,
+              padding: "4px 10px",
+              fontSize: "0.78rem",
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            Hapus
+          </button>,
         ])}
       />
     </div>

@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import api from "../api.js";
 import { useToast } from "../context/ToastContext.jsx";
-import { Camera, X, RefreshCcw, Sparkles } from "lucide-react";
+import { Camera, X, RefreshCcw, Sparkles, Trash2 } from "lucide-react";
 
 const KATEGORI_OPTIONS = ["Bahan Baku", "Produk Olahan"];
 
@@ -265,6 +265,19 @@ export default function EditProduct() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!window.confirm("Hapus produk ini secara permanen?")) return;
+    try {
+      setSaving(true);
+      await api.delete(`/products/${id}`);
+      showToast("Produk berhasil dihapus.");
+      navigate("/dashboard");
+    } catch (err) {
+      showToast(err.response?.data?.error || "Gagal menghapus produk.", "error");
+      setSaving(false);
+    }
+  };
+
   if (!form) return <div className="empty-state"><div className="spinner" style={{ margin: "0 auto" }} /></div>;
 
   const jenisOptions = JENIS_BY_KATEGORI[form.category] || [];
@@ -513,15 +526,36 @@ export default function EditProduct() {
         </div>
         </div>
 
-        {/* --- TOMBOL PUBLIKASIKAN --- */}
-        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 32 }}>
+        {/* --- TOMBOL PUBLIKASIKAN & HAPUS --- */}
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: 32, flexWrap: "wrap" }}>
           <button
             className="btn btn-primary"
-            style={{ padding: "14px 40px", borderRadius: 999, fontSize: "1rem", fontWeight: 600, minWidth: 300 }}
+            style={{ padding: "14px 40px", borderRadius: 999, fontSize: "1rem", fontWeight: 600, minWidth: 240 }}
             type="submit"
             disabled={saving || !imagePreview}
           >
             {saving ? "Menyimpan…" : "Simpan Perubahan"}
+          </button>
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={saving}
+            style={{
+              padding: "14px 28px",
+              borderRadius: 999,
+              fontSize: "1rem",
+              fontWeight: 600,
+              background: "#FEE2E2",
+              color: "#DC2626",
+              border: "1px solid #FCA5A5",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
+            <Trash2 size={18} />
+            Hapus Produk
           </button>
         </div>
       </form>
