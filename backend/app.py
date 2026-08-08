@@ -53,6 +53,8 @@ app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(days=7)
 
 CORS(app, resources={r"/api/*": {"origins": "*"}})
 db.init_app(app)
+with app.app_context():
+    db.create_all()
 jwt = JWTManager(app)
 
 CATEGORIES = [
