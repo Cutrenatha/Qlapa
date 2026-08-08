@@ -257,9 +257,16 @@ DEMO_PRODUCTS = [
     )
 ]
 
-with app.app_context():
-    db.drop_all()
-    db.create_all()
+def seed_data(drop_first=False):
+    if drop_first:
+        db.drop_all()
+        db.create_all()
+    else:
+        db.create_all()
+
+    if User.query.first() is not None:
+        print("Database sudah berisi data. Seeding dilewati.")
+        return
 
     seller = User(name="Siti Nurhaliza", email="seller@qlapa.test", role="buyer", is_seller=True,
                   phone="081200000001", store_name="Toko Hijau Nusantara",
@@ -325,12 +332,18 @@ with app.app_context():
     db.session.commit()
 
     first_product = Product.query.first()
-    db.session.add(Review(product_id=first_product.id, buyer_id=buyer.id,
-                           rating=5, comment="Kualitas bagus, pengiriman cepat!"))
-    db.session.commit()
+    if first_product:
+        db.session.add(Review(product_id=first_product.id, buyer_id=buyer.id,
+                               rating=5, comment="Kualitas bagus, pengiriman cepat!"))
+        db.session.commit()
 
     print("Seed selesai!")
     print("Akun Seller 1: seller@qlapa.test / password123")
     print("Akun Seller 2: seller2@qlapa.test / password123")
     print("Akun Buyer  : buyer@qlapa.test / password123")
     print("Akun Admin  : Qlapa@gmail.com / qlapa123  (buka di /admin/login)")
+
+
+if __name__ == "__main__":
+    with app.app_context():
+        seed_data(drop_first=True)

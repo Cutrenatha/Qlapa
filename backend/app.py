@@ -55,6 +55,11 @@ CORS(app, resources={r"/api/*": {"origins": "*"}})
 db.init_app(app)
 with app.app_context():
     db.create_all()
+    try:
+        from seed import seed_data
+        seed_data(drop_first=False)
+    except Exception as e:
+        print(f"[Auto Seed Error] {e}")
 jwt = JWTManager(app)
 
 CATEGORIES = [
