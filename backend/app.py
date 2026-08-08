@@ -303,31 +303,35 @@ def categories():
 # ---------------------------------------------------------------------------
 @app.get("/api/products")
 def list_products():
-    q = request.args.get("q", "").strip()
-    category = request.args.get("category")
-    location = request.args.get("location")
-    min_price = request.args.get("min_price", type=float)
-    max_price = request.args.get("max_price", type=float)
-    seller_id = request.args.get("seller_id", type=int)
+    try:
+        q = request.args.get("q", "").strip()
+        category = request.args.get("category")
+        location = request.args.get("location")
+        min_price = request.args.get("min_price", type=float)
+        max_price = request.args.get("max_price", type=float)
+        seller_id = request.args.get("seller_id", type=int)
 
-    query = Product.query.filter(Product.status == "active")
-    if seller_id:
-        query = Product.query.filter(Product.seller_id == seller_id)
-    if q:
-        query = query.filter(Product.name.ilike(f"%{q}%"))
-    if category:
-        query = query.filter(Product.category == category)
-    if min_price is not None:
-        query = query.filter(Product.price >= min_price)
-    if max_price is not None:
-        query = query.filter(Product.price <= max_price)
+        query = Product.query.filter(Product.status == "active")
+        if seller_id:
+            query = Product.query.filter(Product.seller_id == seller_id)
+        if q:
+            query = query.filter(Product.name.ilike(f"%{q}%"))
+        if category:
+            query = query.filter(Product.category == category)
+        if min_price is not None:
+            query = query.filter(Product.price >= min_price)
+        if max_price is not None:
+            query = query.filter(Product.price <= max_price)
 
-    products = query.order_by(Product.created_at.desc()).all()
-    if location:
-        products = [p for p in products if p.seller and p.seller.store_location and
-                    location.lower() in p.seller.store_location.lower()]
+        products = query.order_by(Product.created_at.desc()).all()
+        if location:
+            products = [p for p in products if p.seller and p.seller.store_location and
+                        location.lower() in p.seller.store_location.lower()]
 
-    return jsonify([p.to_dict() for p in products])
+        return jsonify([p.to_dict() for p in products])
+    except Exception as e:
+        print(f"[list_products Error] {e}")
+        return jsonify({"error": f"Gagal mengambil produk: {str(e)}"}), 500
 
 
 
