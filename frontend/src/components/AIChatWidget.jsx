@@ -12,7 +12,7 @@ export default function AIChatWidget({
   const [messages, setMessages] = useState([
     {
       from: "ai",
-      text: "Halo! Saya Qlapa AI 🌱. Tanyakan apa saja tentang pemanfaatan limbah kelapa, misalnya: 'apa manfaat sabut kelapa?'",
+      text: "Halo! Saya Qlapa AI. Tanyakan apa saja tentang pemanfaatan limbah kelapa, misalnya: 'apa manfaat sabut kelapa?'",
     },
   ]);
   const [input, setInput] = useState("");
@@ -71,7 +71,7 @@ export default function AIChatWidget({
       {open && (
         <div style={styles.panel} className="card">
           <div style={styles.header}>
-            <span>🌱 Qlapa AI</span>
+            <span>Qlapa AI</span>
             <button
               className="btn btn-ghost btn-sm"
               style={{ color: "#fff" }}
@@ -155,7 +155,7 @@ export default function AIChatWidget({
         </div>
       )}
       <button style={styles.fab} onClick={() => handleSetOpen(!open)}>
-        {open ? "✕" : "🌱"}
+        {open ? "✕" : "AI"}
       </button>
     </div>
   );

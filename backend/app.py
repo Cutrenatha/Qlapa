@@ -276,6 +276,35 @@ def upload_store_photo():
     return jsonify(user.to_dict())
 
 
+@app.get("/api/stores/<int:seller_id>")
+def get_store_profile(seller_id):
+    """Endpoint publik profil toko dan katalog produk milik penjual."""
+    seller = db.session.get(User, seller_id)
+    if not seller or not seller.is_seller:
+        return jsonify({"error": "Toko tidak ditemukan"}), 404
+
+    products = Product.query.filter(Product.seller_id == seller.id, Product.status == "active").order_by(Product.created_at.desc()).all()
+    all_reviews = [r for p in products for r in p.reviews]
+    avg_rating = round(sum(r.rating for r in all_reviews) / len(all_reviews), 1) if all_reviews else None
+
+    return jsonify({
+        "seller": {
+            "id": seller.id,
+            "name": seller.name,
+            "store_name": seller.store_name or seller.name,
+            "store_location": seller.store_location or "Indonesia",
+            "store_description": seller.store_description or "Penjual resmi limbah & produk olahan kelapa berkualitas di Qlapa.",
+            "store_image_url": seller.store_image_url,
+            "avatar_url": seller.avatar_url,
+            "created_at": seller.created_at.isoformat() if seller.created_at else None,
+            "product_count": len(products),
+            "avg_rating": avg_rating,
+            "review_count": len(all_reviews),
+        },
+        "products": [p.to_dict(include_seller=False) for p in products]
+    })
+
+
 @app.put("/api/auth/me/password")
 @jwt_required()
 def change_password():
@@ -806,21 +835,23 @@ def list_orders():
 @app.put("/api/orders/<int:order_id>/status")
 @jwt_required()
 def update_order_status(order_id):
-    """Escrow flow:
-    Seller: menunggu_konfirmasi -> diproses -> dikirim | ditolak
-    Buyer:  dikirim -> selesai (konfirmasi terima barang, dana escrow dicairkan)"""
+    """Escrow & Order flow:
+    Seller: terima/konfirmasi (dikemas), kirim (dikirim), tolak/batal (dibatalkan), selesai
+    Buyer:  selesai (konfirmasi terima barang), pengembalian, dibatalkan"""
     user = current_user()
     order = db.session.get(Order, order_id)
     if not order:
         return jsonify({"error": "Pesanan tidak ditemukan"}), 404
 
     new_status = request.get_json(force=True).get("status")
-    seller_moves = {"diproses", "dikirim", "ditolak"}
-    buyer_moves = {"selesai"}
+    seller_moves = {"menunggu_konfirmasi", "diproses", "dikemas", "dikirim", "ditolak", "dibatalkan", "selesai"}
+    buyer_moves = {"selesai", "pengembalian", "dibatalkan"}
 
     if user.id == order.seller_id and new_status in seller_moves:
         order.status = new_status
     elif user.id == order.buyer_id and new_status in buyer_moves:
+        order.status = new_status
+    elif user.is_admin:
         order.status = new_status
     else:
         return jsonify({"error": "Tidak diizinkan mengubah status ini"}), 403
@@ -836,6 +867,17 @@ def update_order_status(order_id):
 @jwt_required()
 def add_review(product_id):
     user = current_user()
+    
+    # Verifikasi bahwa pembeli telah membeli produk ini (status order 'selesai')
+    completed_order = Order.query.join(OrderItem).filter(
+        Order.buyer_id == user.id,
+        Order.status == "selesai",
+        OrderItem.product_id == product_id
+    ).first()
+
+    if not completed_order and not user.is_admin:
+        return jsonify({"error": "Ulasan hanya dapat diberikan jika Anda telah membeli produk ini dan pesanan telah selesai."}), 403
+
     data = request.get_json(force=True)
     rating = int(data.get("rating", 0))
     if not (1 <= rating <= 5):

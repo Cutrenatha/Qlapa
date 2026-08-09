@@ -1087,21 +1087,21 @@ def _generate_local_fallback(intent: str, types: list[str], products: list[dict]
         if "jual" in msg or "toko" in msg or "seller" in msg:
             reply_parts.append(
                 "Untuk berjualan di Qlapa, Anda cukup membuka halaman toko di dashboard seller Anda, "
-                "lalu unggah foto produk limbah kelapa Anda. AI kami akan membantu membuat deskripsi otomatis! 🌱"
+                "lalu unggah foto produk limbah kelapa Anda. AI kami akan membantu membuat deskripsi otomatis!"
             )
         elif "briket" in msg or "arang" in msg:
             reply_parts.append(
                 "Briket dan Arang Aktif adalah hasil olahan tempurung kelapa yang bernilai tinggi. "
-                "Keduanya sangat diminati untuk bahan bakar ramah lingkungan dan industri penyaringan air. 🌱"
+                "Keduanya sangat diminati untuk bahan bakar ramah lingkungan dan industri penyaringan air."
             )
         elif "media tanam" in msg or "hidroponik" in msg or "tanaman" in msg:
             reply_parts.append(
                 "Untuk media tanam hidroponik, produk hasil olahan kelapa yang paling cocok adalah Cocopeat dan Cocofiber. "
-                "Keduanya memiliki daya serap air yang sangat baik dan ramah lingkungan. 🌱"
+                "Keduanya memiliki daya serap air yang sangat baik dan ramah lingkungan."
             )
         else:
             reply_parts.append(
-                "Halo! Saya Qlapa AI, asisten virtual platform Qlapa 🌱. "
+                "Halo! Saya Qlapa AI, asisten virtual platform Qlapa. "
                 "Saya dapat membantu Anda menemukan ide pemanfaatan limbah kelapa (sabut, tempurung, ampas, daun, air kelapa) "
                 "atau merekomendasikan produk olahan kelapa (briket, cocopeat, cocofiber, arang aktif). "
                 "Ada yang bisa saya bantu hari ini?"

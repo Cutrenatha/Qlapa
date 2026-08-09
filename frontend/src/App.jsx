@@ -12,6 +12,7 @@ import Cart from "./pages/Cart.jsx";
 import Checkout from "./pages/Checkout.jsx";
 import Chat from "./pages/Chat.jsx";
 import Profile from "./pages/Profile.jsx";
+import StoreProfile from "./pages/StoreProfile.jsx";
 import OpenStore from "./pages/OpenStore.jsx";
 import SellerDashboard from "./pages/SellerDashboard.jsx";
 import AddProduct from "./pages/AddProduct.jsx";
@@ -72,6 +73,7 @@ export default function App() {
         <Route path="/checkout" element={<Checkout />} />
         <Route path="/chat" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
         <Route path="/profil" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+        <Route path="/toko/:id" element={<StoreProfile />} />
         <Route path="/toko/buka" element={<ProtectedRoute><OpenStore /></ProtectedRoute>} />
         <Route path="/dashboard" element={<ProtectedRoute><SellerDashboard /></ProtectedRoute>} />
         <Route path="/dashboard/tambah-produk" element={<ProtectedRoute requireSeller><AddProduct /></ProtectedRoute>} />

@@ -232,7 +232,7 @@ export default function ProductDetail() {
       setAiReply(response.data.recommendation);
     } catch (err) {
       console.error(err);
-      setAiReply("Gagal mendapatkan saran dari Qlapa AI. Silakan coba lagi 🌱.");
+      setAiReply("Gagal mendapatkan saran dari Qlapa AI. Silakan coba lagi.");
     } finally {
       setIsTyping(false);
       setAiLoading(false);
@@ -322,8 +322,24 @@ export default function ProductDetail() {
             </div>
 
             {activeTab === "info" ? (
-              <div className="card" style={{ padding: 20, marginTop: 16, display: "flex", alignItems: "center", gap: 16 }}>
-                <div style={{ width: 46, height: 46, borderRadius: "50%", background: "var(--green-100)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, color: "var(--green-900)", fontSize: "1.1rem", overflow: "hidden" }}>
+              <Link
+                to={product.seller_id ? `/toko/${product.seller_id}` : "#"}
+                className="card"
+                style={{
+                  padding: 20, marginTop: 16, display: "flex", alignItems: "center", gap: 16,
+                  textDecoration: "none", color: "inherit", cursor: "pointer",
+                  transition: "all 0.2s",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = "var(--ink)";
+                  e.currentTarget.style.background = "#FAF7F2";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = "var(--line)";
+                  e.currentTarget.style.background = "#fff";
+                }}
+              >
+                <div style={{ width: 46, height: 46, borderRadius: "50%", background: "var(--green-100)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, color: "var(--green-900)", fontSize: "1.1rem", overflow: "hidden", flexShrink: 0 }}>
                   {product.seller?.store_image_url || product.seller?.avatar_url ? (
                     <img
                       src={product.seller.store_image_url || product.seller.avatar_url}
@@ -334,15 +350,16 @@ export default function ProductDetail() {
                     product.seller?.store_name?.charAt(0) || "T"
                   )}
                 </div>
-                <div>
-                  <div style={{ fontWeight: 700, color: "var(--ink)", fontSize: "0.95rem" }}>
-                    {product.seller?.store_name || "Toko Hijau Nusantara"}
+                <div style={{ flexGrow: 1 }}>
+                  <div style={{ fontWeight: 700, color: "var(--ink)", fontSize: "0.95rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <span>{product.seller?.store_name || "Toko Hijau Nusantara"}</span>
+                    <span style={{ fontSize: "0.78rem", color: "var(--brown-500)", fontWeight: 600 }}>Kunjungi Toko &rarr;</span>
                   </div>
                   <div style={{ fontSize: "0.82rem", color: "var(--ink-soft)", display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}>
                     <MapPin size={12} /> {product.seller?.store_location || product.location || "Aceh Besar, Aceh"}
                   </div>
                 </div>
-              </div>
+              </Link>
             ) : (
               <div className="card" style={{ padding: 20, marginTop: 16, color: "var(--ink-soft)", fontSize: "0.88rem", lineHeight: 1.6 }}>
                 <div>Metode Pengiriman: <strong>Kargo & Pick-up Sendiri</strong></div>
@@ -496,21 +513,6 @@ export default function ProductDetail() {
             ))}
           </div>
 
-          {user && user.id !== product.seller_id && (
-            <form onSubmit={submitReview} className="card" style={{ padding: 16, marginTop: 16 }}>
-              <div className="field">
-                <label>Rating</label>
-                <select value={reviewRating} onChange={(e) => setReviewRating(Number(e.target.value))}>
-                  {[5, 4, 3, 2, 1].map((n) => <option key={n} value={n}>{n} Bintang</option>)}
-                </select>
-              </div>
-              <div className="field">
-                <label>Komentar</label>
-                <textarea value={reviewComment} onChange={(e) => setReviewComment(e.target.value)} placeholder="Bagaimana kualitas produknya?" />
-              </div>
-              <button className="btn btn-primary btn-sm" type="submit">Kirim Ulasan</button>
-            </form>
-          )}
         </div>
       </div>
 

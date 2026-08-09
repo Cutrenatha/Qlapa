@@ -729,8 +729,26 @@ function PesananTab({ orders, onUpdateStatus }) {
                 </div>
 
                 {/* Actions */}
-                {(o.status === "dikemas" || o.status === "pengembalian") && (
-                  <div className="dashboard-order-card-foot">
+                {(o.status === "menunggu_konfirmasi" || o.status === "belum_bayar" || o.status === "diproses" || o.status === "dikemas" || o.status === "dikirim" || o.status === "pengembalian") && (
+                  <div className="dashboard-order-card-foot" style={{ gap: 12, justifyContent: "flex-end" }}>
+                    {(o.status === "menunggu_konfirmasi" || o.status === "belum_bayar" || o.status === "diproses") && (
+                      <>
+                        <button
+                          className="dashboard-btn-action-primary"
+                          onClick={() => onUpdateStatus(o.id, "dikemas")}
+                        >
+                          <Check size={14} strokeWidth={2.5} />
+                          Konfirmasi Pesanan
+                        </button>
+                        <button
+                          className="dashboard-btn-action-danger"
+                          onClick={() => onUpdateStatus(o.id, "dibatalkan")}
+                        >
+                          <X size={14} strokeWidth={2.5} />
+                          Tolak Pesanan
+                        </button>
+                      </>
+                    )}
                     {o.status === "dikemas" && (
                       <>
                         <button
@@ -748,6 +766,15 @@ function PesananTab({ orders, onUpdateStatus }) {
                           Batalkan Pesanan
                         </button>
                       </>
+                    )}
+                    {o.status === "dikirim" && (
+                      <button
+                        className="dashboard-btn-action-primary"
+                        onClick={() => onUpdateStatus(o.id, "selesai")}
+                      >
+                        <CheckCircle2 size={14} strokeWidth={2} />
+                        Tandai Selesai
+                      </button>
                     )}
                     {o.status === "pengembalian" && (
                       <button

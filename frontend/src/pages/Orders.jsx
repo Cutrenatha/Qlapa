@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import api from "../api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
-import { ShoppingBag, Truck, CheckCircle, Clock, X, AlertTriangle, Package, PackageOpen, Undo2 } from "lucide-react";
+import { ShoppingBag, Truck, CheckCircle, Clock, X, AlertTriangle, Package, PackageOpen, Undo2, Star, MessageSquare } from "lucide-react";
 import "./SellerDashboard.css"; // Reuse seller dashboard css for identical design
 
 const STATUS_META = {
@@ -39,6 +39,12 @@ export default function Orders() {
   const [orders, setOrders] = useState([]);
   const [filter, setFilter] = useState("semua");
 
+  // State for Review modal
+  const [reviewModalProduct, setReviewModalProduct] = useState(null); // { id, name }
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState("");
+  const [submittingReview, setSubmittingReview] = useState(false);
+
   const tabs = [
     { key: "semua", label: "Semua" },
     { key: "belum_bayar", label: "Belum Bayar" },
@@ -62,7 +68,7 @@ export default function Orders() {
   const confirmReceived = async (id) => {
     try {
       await api.put(`/orders/${id}/status`, { status: "selesai" });
-      showToast("Pesanan selesai! Dana escrow dicairkan ke penjual.");
+      showToast("Pesanan selesai! Silakan berikan ulasan Anda.");
       load();
     } catch (e) {
       showToast("Gagal memperbarui status pesanan.", "error");
@@ -76,6 +82,30 @@ export default function Orders() {
       load();
     } catch (e) {
       showToast(e.response?.data?.error || "Gagal memperbarui status pesanan.", "error");
+    }
+  };
+
+  const handleOpenReview = (product) => {
+    setReviewModalProduct(product);
+    setReviewRating(5);
+    setReviewComment("");
+  };
+
+  const handleSubmitReview = async (e) => {
+    e.preventDefault();
+    if (!reviewModalProduct) return;
+    setSubmittingReview(true);
+    try {
+      await api.post(`/products/${reviewModalProduct.product_id}/reviews`, {
+        rating: reviewRating,
+        comment: reviewComment,
+      });
+      showToast("Ulasan berhasil dikirim. Terima kasih!");
+      setReviewModalProduct(null);
+    } catch (err) {
+      showToast(err.response?.data?.error || "Gagal mengirim ulasan", "error");
+    } finally {
+      setSubmittingReview(false);
     }
   };
 
@@ -169,7 +199,7 @@ export default function Orders() {
                     <p className="dashboard-order-section-label">Produk ({(o.items || []).length})</p>
                     <div className="dashboard-order-items-list">
                       {(o.items || []).map((it) => (
-                        <div key={it.id} className="dashboard-order-item-row">
+                        <div key={it.id} className="dashboard-order-item-row" style={{ flexWrap: "wrap" }}>
                           <span className="dashboard-order-item-name">
                             {it.product_name}
                             <span className="dashboard-order-item-qty">x{it.qty}</span>
@@ -177,6 +207,28 @@ export default function Orders() {
                           <span className="dashboard-order-item-subtotal">
                             Rp {(it.subtotal || 0).toLocaleString("id-ID")}
                           </span>
+                          {o.status === "selesai" && (
+                            <button
+                              onClick={() => handleOpenReview(it)}
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: 4,
+                                background: "#FFFBEB",
+                                border: "1px solid #FCD34D",
+                                color: "#B45309",
+                                borderRadius: 6,
+                                padding: "4px 10px",
+                                fontSize: "0.78rem",
+                                fontWeight: 600,
+                                cursor: "pointer",
+                                marginLeft: "auto",
+                              }}
+                            >
+                              <Star size={13} fill="#F59E0B" color="#F59E0B" />
+                              Beri Ulasan
+                            </button>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -207,7 +259,7 @@ export default function Orders() {
                 </div>
 
                 {/* Actions */}
-                <div className="dashboard-order-card-foot" style={{ justifyContent: "flex-end", borderTop: "1px solid var(--line)", padding: "16px 20px", background: "#F9FAFB" }}>
+                <div className="dashboard-order-card-foot" style={{ justifyContent: "flex-end", gap: 12, borderTop: "1px solid var(--line)", padding: "16px 20px", background: "#F9FAFB" }}>
                   {o.status === "dikirim" && (
                     <button
                       className="dashboard-btn-action-primary"
@@ -217,7 +269,7 @@ export default function Orders() {
                       Konfirmasi Barang Diterima
                     </button>
                   )}
-                  {o.status === "belum_bayar" && (
+                  {(o.status === "belum_bayar" || o.status === "menunggu_konfirmasi") && (
                     <button
                       className="dashboard-btn-action-danger"
                       onClick={() => handleStatusChange(o.id, "dibatalkan", "Pesanan berhasil dibatalkan.")}
@@ -239,6 +291,78 @@ export default function Orders() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Review Modal */}
+      {reviewModalProduct && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+          background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center",
+          zIndex: 9999, padding: 16,
+        }}>
+          <div className="card" style={{ maxWidth: 440, width: "100%", padding: 24, borderRadius: 18, background: "#fff" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <h3 style={{ fontSize: "1.1rem", fontWeight: 700, margin: 0 }}>Beri Ulasan Produk</h3>
+              <button
+                onClick={() => setReviewModalProduct(null)}
+                style={{ background: "none", border: "none", cursor: "pointer", padding: 4 }}
+              >
+                <X size={20} color="var(--ink-soft)" />
+              </button>
+            </div>
+            
+            <p style={{ fontSize: "0.9rem", fontWeight: 600, color: "var(--ink)", marginBottom: 16 }}>
+              {reviewModalProduct.product_name}
+            </p>
+
+            <form onSubmit={handleSubmitReview}>
+              <div className="field" style={{ marginBottom: 16 }}>
+                <label style={{ fontSize: "0.85rem", fontWeight: 600, marginBottom: 8, display: "block" }}>Rating Bintang</label>
+                <div style={{ display: "flex", gap: 8, cursor: "pointer" }}>
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <Star
+                      key={star}
+                      size={28}
+                      onClick={() => setReviewRating(star)}
+                      fill={star <= reviewRating ? "#F59E0B" : "none"}
+                      color={star <= reviewRating ? "#F59E0B" : "#D1D5DB"}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div className="field" style={{ marginBottom: 20 }}>
+                <label style={{ fontSize: "0.85rem", fontWeight: 600, marginBottom: 6, display: "block" }}>Ulasan Anda</label>
+                <textarea
+                  rows={3}
+                  value={reviewComment}
+                  onChange={(e) => setReviewComment(e.target.value)}
+                  placeholder="Ceritakan pengalaman Anda membeli produk ini..."
+                  style={{ width: "100%", padding: 12, borderRadius: 10, border: "1px solid var(--line)", fontSize: "0.9rem" }}
+                  required
+                />
+              </div>
+
+              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                <button
+                  type="button"
+                  onClick={() => setReviewModalProduct(null)}
+                  style={{ padding: "8px 16px", borderRadius: 8, border: "1px solid var(--line)", background: "#fff", cursor: "pointer" }}
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingReview}
+                  className="btn btn-primary"
+                  style={{ padding: "8px 20px", borderRadius: 8 }}
+                >
+                  {submittingReview ? "Mengirim..." : "Kirim Ulasan"}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>

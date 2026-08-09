@@ -1,5 +1,4 @@
 """Jalankan sekali untuk mengisi data contoh: python seed.py"""
-from app import app
 from models import db, User, Product, Review
 
 DEMO_PRODUCTS = [
@@ -260,11 +259,9 @@ DEMO_PRODUCTS = [
 def seed_data(drop_first=False):
     if drop_first:
         db.drop_all()
-        db.create_all()
-    else:
-        db.create_all()
+    db.create_all()
 
-    if User.query.first() is not None:
+    if not drop_first and User.query.first() is not None:
         print("Database sudah berisi data. Seeding dilewati.")
         return
 
@@ -331,11 +328,75 @@ def seed_data(drop_first=False):
         db.session.add(prod)
     db.session.commit()
 
-    first_product = Product.query.first()
-    if first_product:
-        db.session.add(Review(product_id=first_product.id, buyer_id=buyer.id,
-                               rating=5, comment="Kualitas bagus, pengiriman cepat!"))
-        db.session.commit()
+    # Tambahkan ulasan yang relevan untuk setiap produk
+    all_products = Product.query.all()
+    sample_reviews = {
+        "Tempurung Kelapa Kering": [
+            (5, "Tempurung sangat kering dan bersih dari sisa sabut. Bahan padat dan kokoh untuk bahan briket."),
+            (5, "Pengiriman aman dan cepat. Kualitas batok kelapa tebal, siap dipakai untuk bahan kerajinan.")
+        ],
+        "Sabut Kelapa Segar": [
+            (5, "Sabut masih segar dan seratnya panjang. Sangat pas untuk bahan baku media tanam tanaman hias.")
+        ],
+        "Sabut Kelapa Kering": [
+            (4, "Kering sempurna dan seratnya rapat. Diolah jadi media tanam hidroponik hasilnya memuaskan.")
+        ],
+        "Ampas Kelapa Segar": [
+            (5, "Ampas bersih dan masih beraroma segar. Kualitas baik untuk campuran bahan pakan ternak.")
+        ],
+        "Daun Kelapa Kering": [
+            (4, "Daun kering ulet dan tidak gampang patah. Sangat bagus untuk bahan membuat anyaman dan kerajinan.")
+        ],
+        "Air Kelapa Murni": [
+            (5, "Air kelapa murni tanpa campuran. Kemasan aman, cocok digunakan untuk starter pembuatan nata de coco.")
+        ],
+        "Briket Arang Batok Kelapa": [
+            (5, "Briket panasnya tinggi, konsisten, dan sangat sedikit abu. Kualitas ekspor yang mantap."),
+            (5, "Tanpa bau dan tanpa asap berlebih. Cocok sekali untuk usaha pemanggangan dan kuliner.")
+        ],
+        "Arang Aktif Kelapa": [
+            (5, "Porositas tinggi dan efektif menyaring air keruh menjadi jernih. Kualitas penyaringan maksimal.")
+        ],
+        "Cocopeat Blok Premium": [
+            (5, "Daya serap airnya luar biasa tinggi dan bebas serangga. Persemaian benih saya tumbuh cepat.")
+        ],
+        "Cocofiber Serat Bersih": [
+            (5, "Serat sabut bersih dan sudah dipisahkan dari serbuknya. Cocok untuk bahan isi jok matras dan kerajinan.")
+        ],
+        "Pot Sabut Kelapa": [
+            (5, "Pot ramah lingkungan yang kokoh dan bernilai estetis tinggi untuk tanaman hias dan anggrek.")
+        ],
+        "Keset Sabut Kelapa Polos": [
+            (5, "Bahan serat sabutnya tebal dan jahitan sangat rapi. Sangat efektif menyerap air dan debu alas kaki.")
+        ],
+        "Tali Sabut Kelapa": [
+            (5, "Pilinan tali rapat dan sangat kuat. Tahan terhadap air hujan dan sinar matahari untuk pertanian.")
+        ],
+        "Hiasan Kerajinan Tempurung": [
+            (5, "Pengerjaan halus dan kap lampu hiasnya sangat estetik. Memberi nuansa alami pada interior ruangan.")
+        ],
+        "Mangkuk Tempurung Alami": [
+            (5, "Mangkuk dipoles sangat mulus dengan bahan alami. Aman digunakan untuk makanan dan unik sekali.")
+        ],
+        "Sendok Tempurung Kelapa": [
+            (5, "Sendoknya ringan dan bentuknya unik. Terasa alami dan nyaman digunakan.")
+        ],
+        "Pupuk Organik Kompos Kelapa": [
+            (5, "Pupuk gembur dan menyuburkan tanah dengan cepat. Tanaman cabai dan sayuran jadi semakin subur.")
+        ],
+        "Pakan Ternak Ampas Kelapa": [
+            (5, "Gilingannya halus dan seratnya bagus untuk nutrisi ternak. Sangat menghemat biaya pakan.")
+        ]
+    }
+
+    buyers = [buyer, seller, seller2, hybrid]
+    for prod in all_products:
+        revs = sample_reviews.get(prod.name)
+        if revs:
+            for idx, (rating, comment) in enumerate(revs):
+                b_user = buyers[idx % len(buyers)]
+                db.session.add(Review(product_id=prod.id, buyer_id=b_user.id, rating=rating, comment=comment))
+    db.session.commit()
 
     print("Seed selesai!")
     print("Akun Seller 1: seller@qlapa.test / password123")
@@ -345,5 +406,6 @@ def seed_data(drop_first=False):
 
 
 if __name__ == "__main__":
+    from app import app
     with app.app_context():
         seed_data(drop_first=True)

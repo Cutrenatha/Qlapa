@@ -14,7 +14,13 @@ export default function FloatingAI() {
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef(null);
 
-  // Auto-scroll to bottom of chat
+  // Auto-scroll to bottom of chat & custom event to open widget
+  useEffect(() => {
+    const handleOpen = () => setIsOpen(true);
+    window.addEventListener("open-ai-chat", handleOpen);
+    return () => window.removeEventListener("open-ai-chat", handleOpen);
+  }, []);
+
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
@@ -48,7 +54,7 @@ export default function FloatingAI() {
         ...prev,
         {
           role: "ai",
-          text: "Maaf, terjadi kendala koneksi dengan Qlapa AI. Silakan coba sesaat lagi 🌱.",
+          text: "Maaf, terjadi kendala koneksi dengan Qlapa AI. Silakan coba sesaat lagi.",
         },
       ]);
     } finally {
